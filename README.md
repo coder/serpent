@@ -2,7 +2,7 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/coder/serpent.svg)](https://pkg.go.dev/github.com/coder/serpent)
 
-`serpent` is a CLI configuration framework based on [cobra](https://github.com/spf13/cobra) and used by [coder/coder](https://github.com/coder/coder).
+`serpent` is a Go CLI configuration framework based on [cobra](https://github.com/spf13/cobra) and used by [coder/coder](https://github.com/coder/coder).
 It's designed for large-scale CLIs with dozens of commands and hundreds
 of options. If you're building a small, self-contained tool, go with
 cobra.

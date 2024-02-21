@@ -421,7 +421,7 @@ func (inv *Invocation) run(state *runState) error {
 
 	if inv.Command.Handler == nil || errors.Is(state.flagParseErr, pflag.ErrHelp) {
 		if inv.Command.HelpHandler == nil {
-			return xerrors.Errorf("no handler or help for command %s", inv.Command.FullName())
+			return defaultHelpFn()(inv)
 		}
 		return inv.Command.HelpHandler(inv)
 	}
