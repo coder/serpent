@@ -76,10 +76,10 @@ func (c *Cmd) Walk(fn func(*Cmd)) {
 	}
 }
 
-// PrepareAll performs initialization and linting on the command and all its children.
-func (c *Cmd) PrepareAll() error {
+// init performs initialization and linting on the command and all its children.
+func (c *Cmd) init() error {
 	if c.Use == "" {
-		return xerrors.New("command must have a Use field so that it has a name")
+		c.Use = "unnamed"
 	}
 	var merr error
 
@@ -116,7 +116,7 @@ func (c *Cmd) PrepareAll() error {
 	})
 	for _, child := range c.Children {
 		child.Parent = c
-		err := child.PrepareAll()
+		err := child.init()
 		if err != nil {
 			merr = errors.Join(merr, xerrors.Errorf("command %v: %w", child.Name(), err))
 		}
@@ -493,6 +493,11 @@ func findArg(want string, args []string, fs *pflag.FlagSet) (int, error) {
 //
 //nolint:revive
 func (inv *Invocation) Run() (err error) {
+	err = inv.Command.init()
+	if err != nil {
+		return xerrors.Errorf("initializing command: %w", err)
+	}
+
 	defer func() {
 		// Pflag is panicky, so additional context is helpful in tests.
 		if flag.Lookup("test.v") == nil {
