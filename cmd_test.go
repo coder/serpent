@@ -116,7 +116,7 @@ func TestCommand(t *testing.T) {
 							),
 						)
 						if verbose {
-							i.Stdout.Write([]byte("!!!"))
+							_, _ = i.Stdout.Write([]byte("!!!"))
 						}
 						return nil
 					},
@@ -129,7 +129,8 @@ func TestCommand(t *testing.T) {
 		t.Parallel()
 		i := cmd().Invoke("toupper", "hello")
 		io := fakeIO(i)
-		i.Run()
+		err := i.Run()
+		require.NoError(t, err)
 		require.Equal(t, "HELLO", io.Stdout.String())
 	})
 
@@ -139,7 +140,9 @@ func TestCommand(t *testing.T) {
 			"up", "hello",
 		)
 		io := fakeIO(i)
-		i.Run()
+		err := i.Run()
+		require.NoError(t, err)
+
 		require.Equal(t, "HELLO", io.Stdout.String())
 	})
 
@@ -326,7 +329,7 @@ func TestCommand_DeepNest(t *testing.T) {
 					{
 						Use: "3",
 						Handler: func(i *serpent.Invocation) error {
-							i.Stdout.Write([]byte("3"))
+							_, _ = i.Stdout.Write([]byte("3"))
 							return nil
 						},
 					},
@@ -432,7 +435,7 @@ func TestCommand_RawArgs(t *testing.T) {
 						if v := i.ParsedFlags().Lookup("password").Value.String(); v != "codershack" {
 							return xerrors.Errorf("password %q is wrong!", v)
 						}
-						i.Stdout.Write([]byte(strings.Join(i.Args, " ")))
+						_, _ = i.Stdout.Write([]byte(strings.Join(i.Args, " ")))
 						return nil
 					}),
 				},
@@ -480,7 +483,7 @@ func TestCommand_RootRaw(t *testing.T) {
 	cmd := &serpent.Cmd{
 		RawArgs: true,
 		Handler: func(i *serpent.Invocation) error {
-			i.Stdout.Write([]byte(strings.Join(i.Args, " ")))
+			_, _ = i.Stdout.Write([]byte(strings.Join(i.Args, " ")))
 			return nil
 		},
 	}
@@ -497,7 +500,7 @@ func TestCommand_HyphenHyphen(t *testing.T) {
 	t.Parallel()
 	cmd := &serpent.Cmd{
 		Handler: (func(i *serpent.Invocation) error {
-			i.Stdout.Write([]byte(strings.Join(i.Args, " ")))
+			_, _ = i.Stdout.Write([]byte(strings.Join(i.Args, " ")))
 			return nil
 		}),
 	}
@@ -538,7 +541,7 @@ func TestCommand_Help(t *testing.T) {
 		return &serpent.Cmd{
 			Use: "root",
 			HelpHandler: (func(i *serpent.Invocation) error {
-				i.Stdout.Write([]byte("abdracadabra"))
+				_, _ = i.Stdout.Write([]byte("abdracadabra"))
 				return nil
 			}),
 			Handler: (func(i *serpent.Invocation) error {

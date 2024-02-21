@@ -1,0 +1,4 @@
+linter-settings:
+  linters:
+    disable:
+      - errcheck
