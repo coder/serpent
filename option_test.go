@@ -1,12 +1,10 @@
 package serpent_test
 
 import (
-	"bytes"
 	"encoding/json"
 	"regexp"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	serpent "github.com/coder/serpent"
@@ -304,39 +302,4 @@ func compareOptionsExceptValues(t *testing.T, exp, found serpent.Option) {
 	require.Equalf(t, exp.Group, found.Group, "option group %q", exp.Name)
 	// UseInstead is the same comparison problem, just check the length
 	require.Equalf(t, len(exp.UseInstead), len(found.UseInstead), "option use instead %q", exp.Name)
-}
-
-func compareValues(t *testing.T, exp, found serpent.Option) {
-	t.Helper()
-
-	if (exp.Value == nil || found.Value == nil) || (exp.Value.String() != found.Value.String() && found.Value.String() == "") {
-		// If the string values are different, this can be a "nil" issue.
-		// So only run this case if the found string is the empty string.
-		// We use MarshalYAML for struct strings, and it will return an
-		// empty string '""' for nil slices/maps/etc.
-		// So use json to compare.
-
-		expJSON, err := json.Marshal(exp.Value)
-		require.NoError(t, err, "marshal")
-		foundJSON, err := json.Marshal(found.Value)
-		require.NoError(t, err, "marshal")
-
-		expJSON = normalizeJSON(expJSON)
-		foundJSON = normalizeJSON(foundJSON)
-		assert.Equalf(t, string(expJSON), string(foundJSON), "option value %q", exp.Name)
-	} else {
-		assert.Equal(t,
-			exp.Value.String(),
-			found.Value.String(),
-			"option value %q", exp.Name)
-	}
-}
-
-// normalizeJSON handles the fact that an empty map/slice is not the same
-// as a nil empty/slice. For our purposes, they are the same.
-func normalizeJSON(data []byte) []byte {
-	if bytes.Equal(data, []byte("[]")) || bytes.Equal(data, []byte("{}")) {
-		return []byte("null")
-	}
-	return data
 }
