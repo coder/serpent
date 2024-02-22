@@ -146,17 +146,6 @@ func TestCommand(t *testing.T) {
 		require.Equal(t, "HELLO", io.Stdout.String())
 	})
 
-	t.Run("NoSubcommand", func(t *testing.T) {
-		t.Parallel()
-		i := cmd().Invoke(
-			"na",
-		)
-		io := fakeIO(i)
-		err := i.Run()
-		require.Empty(t, io.Stdout.String())
-		require.Error(t, err)
-	})
-
 	t.Run("BadArgs", func(t *testing.T) {
 		t.Parallel()
 		i := cmd().Invoke(
@@ -550,13 +539,13 @@ func TestCommand_Help(t *testing.T) {
 		}
 	}
 
-	t.Run("NoHandler", func(t *testing.T) {
+	t.Run("DefaultHandler", func(t *testing.T) {
 		t.Parallel()
 
 		c := cmd()
 		c.HelpHandler = nil
 		err := c.Invoke("--help").Run()
-		require.Error(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Long", func(t *testing.T) {

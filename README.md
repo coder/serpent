@@ -66,7 +66,6 @@ Serpent is designed for high-configurability. To us, that means providing
 many ways to configure the same value (env, YAML, flags, etc.) and keeping
 the code clean and testable as you scale the number of options.
 
-
 ## More coming...
 This README is a stub for now. We'll better explain the design and usage
 of `serpent` in the future.
