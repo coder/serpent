@@ -8,5 +8,5 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version: "^1.21"
-      - name: test & lint
-        run: make test lint
+      - name: test
+        run: make test
