@@ -66,6 +66,22 @@ Serpent is designed for high-configurability. To us, that means providing
 many ways to configure the same value (env, YAML, flags, etc.) and keeping
 the code clean and testable as you scale the number of options.
 
+Serpent's [Option](https://pkg.go.dev/github.com/coder/serpent#Option) type looks like:
+
+```go
+type Option {
+	Name string
+	Flag string
+	Env string
+	Default string
+	Value pflag.Value
+	// ...
+}
+```
+
+And is used by each [Cmd](https://pkg.go.dev/github.com/coder/serpent#Cmd) when
+passed as an array to the `Options` field.
+
 ## More coming...
 This README is a stub for now. We'll better explain the design and usage
 of `serpent` in the future.

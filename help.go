@@ -324,6 +324,12 @@ var usageWantsArgRe = regexp.MustCompile(`<.*>`)
 // output for a given command.
 func defaultHelpFn() HandlerFunc {
 	return func(inv *Invocation) error {
+		var unknownSubcommandErr error
+		if len(inv.Args) > 0 {
+			// Detected unknown subcommand.
+			unknownSubcommandErr = fmt.Errorf("error: unknown subcommand %q", strings.Join(inv.Args, " "))
+			_, _ = fmt.Fprintf(inv.Stderr, "%v\n\n", unknownSubcommandErr)
+		}
 		// We use stdout for help and not stderr since there's no straightforward
 		// way to distinguish between a user error and a help request.
 		//
@@ -347,6 +353,7 @@ func defaultHelpFn() HandlerFunc {
 		if len(inv.Args) > 0 && !usageWantsArgRe.MatchString(inv.Command.Use) {
 			_, _ = fmt.Fprintf(inv.Stderr, "---\nerror: unknown subcommand %q\n", inv.Args[0])
 		}
-		return nil
+		// Return an error so that exit status is non-zero.
+		return unknownSubcommandErr
 	}
 }
