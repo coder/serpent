@@ -76,7 +76,7 @@ the code clean and testable as you scale the number of options.
 Serpent's [Option](https://pkg.go.dev/github.com/coder/serpent#Option) type looks like:
 
 ```go
-type Option {
+type Option struct {
 	Name string
 	Flag string
 	Env string
