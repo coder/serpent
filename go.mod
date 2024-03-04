@@ -4,7 +4,7 @@ go 1.21.4
 
 require (
 	cdr.dev/slog v1.6.2-0.20240126064726-20367d4aede6
-	github.com/coder/coder/v2 v2.8.3
+	github.com/coder/coder/v2 v2.8.4
 	github.com/coder/pretty v0.0.0-20230908205945-e89ba86370e0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/mitchellh/go-wordwrap v1.0.1
