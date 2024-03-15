@@ -123,10 +123,10 @@ var defaultHelpTemplate = func() *template.Template {
 					}
 					return sb.String()
 				},
-				"rootCommandName": func(cmd *Cmd) string {
+				"rootCommandName": func(cmd *Command) string {
 					return strings.Split(cmd.FullName(), " ")[0]
 				},
-				"formatSubcommand": func(cmd *Cmd) string {
+				"formatSubcommand": func(cmd *Command) string {
 					// Minimize padding by finding the longest neighboring name.
 					maxNameLength := len(cmd.Name())
 					if parent := cmd.Parent; parent != nil {
@@ -205,12 +205,12 @@ var defaultHelpTemplate = func() *template.Template {
 					s = wrapTTY(s)
 					return s
 				},
-				"visibleChildren": func(cmd *Cmd) []*Cmd {
-					return filterSlice(cmd.Children, func(c *Cmd) bool {
+				"visibleChildren": func(cmd *Command) []*Command {
+					return filterSlice(cmd.Children, func(c *Command) bool {
 						return !c.Hidden
 					})
 				},
-				"optionGroups": func(cmd *Cmd) []optionGroup {
+				"optionGroups": func(cmd *Command) []optionGroup {
 					groups := []optionGroup{{
 						// Default group.
 						Name:        "",

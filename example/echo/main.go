@@ -9,7 +9,7 @@ import (
 
 func main() {
 	var upper bool
-	cmd := serpent.Cmd{
+	cmd := serpent.Command{
 		Use:   "echo <text>",
 		Short: "Prints the given text to the console.",
 		Options: serpent.OptionSet{

@@ -21,14 +21,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Cmd describes an executable command.
-type Cmd struct {
+// Command describes an executable command.
+type Command struct {
 	// Parent is the direct parent of the command.
 	//
 	// It is set automatically when an invokation runs.
-	Parent *Cmd
+	Parent *Command
+
 	// Children is a list of direct descendants.
-	Children []*Cmd
+	Children []*Command
+
 	// Use is provided in form "command [flags] [args...]".
 	Use string
 
@@ -61,7 +63,7 @@ type Cmd struct {
 
 // AddSubcommands adds the given subcommands, setting their
 // Parent field automatically.
-func (c *Cmd) AddSubcommands(cmds ...*Cmd) {
+func (c *Command) AddSubcommands(cmds ...*Command) {
 	for _, cmd := range cmds {
 		cmd.Parent = c
 		c.Children = append(c.Children, cmd)
@@ -69,7 +71,7 @@ func (c *Cmd) AddSubcommands(cmds ...*Cmd) {
 }
 
 // Walk calls fn for the command and all its children.
-func (c *Cmd) Walk(fn func(*Cmd)) {
+func (c *Command) Walk(fn func(*Command)) {
 	fn(c)
 	for _, child := range c.Children {
 		child.Parent = c
@@ -87,7 +89,7 @@ func ascendingSortFn[T constraints.Ordered](a, b T) int {
 }
 
 // init performs initialization and linting on the command and all its children.
-func (c *Cmd) init() error {
+func (c *Command) init() error {
 	if c.Use == "" {
 		c.Use = "unnamed"
 	}
@@ -121,7 +123,7 @@ func (c *Cmd) init() error {
 	slices.SortFunc(c.Options, func(a, b Option) int {
 		return ascendingSortFn(a.Name, b.Name)
 	})
-	slices.SortFunc(c.Children, func(a, b *Cmd) int {
+	slices.SortFunc(c.Children, func(a, b *Command) int {
 		return ascendingSortFn(a.Name(), b.Name())
 	})
 	for _, child := range c.Children {
@@ -135,13 +137,13 @@ func (c *Cmd) init() error {
 }
 
 // Name returns the first word in the Use string.
-func (c *Cmd) Name() string {
+func (c *Command) Name() string {
 	return strings.Split(c.Use, " ")[0]
 }
 
 // FullName returns the full invocation name of the command,
 // as seen on the command line.
-func (c *Cmd) FullName() string {
+func (c *Command) FullName() string {
 	var names []string
 	if c.Parent != nil {
 		names = append(names, c.Parent.FullName())
@@ -152,7 +154,7 @@ func (c *Cmd) FullName() string {
 
 // FullName returns usage of the command, preceded
 // by the usage of its parents.
-func (c *Cmd) FullUsage() string {
+func (c *Command) FullUsage() string {
 	var uses []string
 	if c.Parent != nil {
 		uses = append(uses, c.Parent.FullName())
@@ -162,7 +164,7 @@ func (c *Cmd) FullUsage() string {
 }
 
 // FullOptions returns the options of the command and its parents.
-func (c *Cmd) FullOptions() OptionSet {
+func (c *Command) FullOptions() OptionSet {
 	var opts OptionSet
 	if c.Parent != nil {
 		opts = append(opts, c.Parent.FullOptions()...)
@@ -175,7 +177,7 @@ func (c *Cmd) FullOptions() OptionSet {
 // stdio discarded.
 //
 // The returned invocation is not live until Run() is called.
-func (c *Cmd) Invoke(args ...string) *Invocation {
+func (c *Command) Invoke(args ...string) *Invocation {
 	return &Invocation{
 		Command: c,
 		Args:    args,
@@ -189,7 +191,7 @@ func (c *Cmd) Invoke(args ...string) *Invocation {
 // Invocation represents an instance of a command being executed.
 type Invocation struct {
 	ctx         context.Context
-	Command     *Cmd
+	Command     *Command
 	parsedFlags *pflag.FlagSet
 	Args        []string
 	// Environ is a list of environment variables. Use EnvsWithPrefix to parse
@@ -291,7 +293,7 @@ func (inv *Invocation) run(state *runState) error {
 
 	// Now the fun part, argument parsing!
 
-	children := make(map[string]*Cmd)
+	children := make(map[string]*Command)
 	for _, child := range inv.Command.Children {
 		child.Parent = inv.Command
 		for _, name := range append(child.Aliases, child.Name()) {
@@ -447,7 +449,7 @@ func (inv *Invocation) run(state *runState) error {
 }
 
 type RunCommandError struct {
-	Cmd *Cmd
+	Cmd *Command
 	Err error
 }
 

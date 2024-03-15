@@ -30,7 +30,7 @@ import (
 
 func main() {
 	var upper bool
-	cmd := serpent.Cmd{
+	cmd := serpent.Command{
 		Use:   "echo <text>",
 		Short: "Prints the given text to the console.",
 		Options: serpent.OptionSet{
@@ -86,7 +86,7 @@ type Option struct {
 }
 ```
 
-And is used by each [Cmd](https://pkg.go.dev/github.com/coder/serpent#Cmd) when
+And is used by each [Command](https://pkg.go.dev/github.com/coder/serpent#Command) when
 passed as an array to the `Options` field.
 
 ## More coming...

@@ -33,7 +33,7 @@ func fakeIO(i *serpent.Invocation) *ioBufs {
 func TestCommand(t *testing.T) {
 	t.Parallel()
 
-	cmd := func() *serpent.Cmd {
+	cmd := func() *serpent.Command {
 		var (
 			verbose bool
 			lower   bool
@@ -41,7 +41,7 @@ func TestCommand(t *testing.T) {
 			reqBool bool
 			reqStr  string
 		)
-		return &serpent.Cmd{
+		return &serpent.Command{
 			Use: "root [subcommand]",
 			Options: serpent.OptionSet{
 				serpent.Option{
@@ -55,7 +55,7 @@ func TestCommand(t *testing.T) {
 					Value: serpent.StringOf(&prefix),
 				},
 			},
-			Children: []*serpent.Cmd{
+			Children: []*serpent.Command{
 				{
 					Use:   "required-flag --req-bool=true --req-string=foo",
 					Short: "Example with required flags",
@@ -320,12 +320,12 @@ func TestCommand(t *testing.T) {
 
 func TestCommand_DeepNest(t *testing.T) {
 	t.Parallel()
-	cmd := &serpent.Cmd{
+	cmd := &serpent.Command{
 		Use: "1",
-		Children: []*serpent.Cmd{
+		Children: []*serpent.Command{
 			{
 				Use: "2",
-				Children: []*serpent.Cmd{
+				Children: []*serpent.Command{
 					{
 						Use: "3",
 						Handler: func(i *serpent.Invocation) error {
@@ -348,7 +348,7 @@ func TestCommand_FlagOverride(t *testing.T) {
 	t.Parallel()
 	var flag string
 
-	cmd := &serpent.Cmd{
+	cmd := &serpent.Command{
 		Use: "1",
 		Options: serpent.OptionSet{
 			{
@@ -357,7 +357,7 @@ func TestCommand_FlagOverride(t *testing.T) {
 				Value: serpent.DiscardValue,
 			},
 		},
-		Children: []*serpent.Cmd{
+		Children: []*serpent.Command{
 			{
 				Use: "2",
 				Options: serpent.OptionSet{
@@ -392,7 +392,7 @@ func TestCommand_MiddlewareOrder(t *testing.T) {
 		}
 	}
 
-	cmd := &serpent.Cmd{
+	cmd := &serpent.Command{
 		Use:   "toupper [word]",
 		Short: "Converts a word to upper case",
 		Middleware: serpent.Chain(
@@ -416,8 +416,8 @@ func TestCommand_MiddlewareOrder(t *testing.T) {
 func TestCommand_RawArgs(t *testing.T) {
 	t.Parallel()
 
-	cmd := func() *serpent.Cmd {
-		return &serpent.Cmd{
+	cmd := func() *serpent.Command {
+		return &serpent.Command{
 			Use: "root",
 			Options: serpent.OptionSet{
 				{
@@ -426,7 +426,7 @@ func TestCommand_RawArgs(t *testing.T) {
 					Value: serpent.StringOf(new(string)),
 				},
 			},
-			Children: []*serpent.Cmd{
+			Children: []*serpent.Command{
 				{
 					Use:     "sushi <args...>",
 					Short:   "Throws back raw output",
@@ -480,7 +480,7 @@ func TestCommand_RawArgs(t *testing.T) {
 
 func TestCommand_RootRaw(t *testing.T) {
 	t.Parallel()
-	cmd := &serpent.Cmd{
+	cmd := &serpent.Command{
 		RawArgs: true,
 		Handler: func(i *serpent.Invocation) error {
 			_, _ = i.Stdout.Write([]byte(strings.Join(i.Args, " ")))
@@ -498,7 +498,7 @@ func TestCommand_RootRaw(t *testing.T) {
 
 func TestCommand_HyphenHyphen(t *testing.T) {
 	t.Parallel()
-	cmd := &serpent.Cmd{
+	cmd := &serpent.Command{
 		Handler: (func(i *serpent.Invocation) error {
 			_, _ = i.Stdout.Write([]byte(strings.Join(i.Args, " ")))
 			return nil
@@ -518,7 +518,7 @@ func TestCommand_ContextCancels(t *testing.T) {
 
 	var gotCtx context.Context
 
-	cmd := &serpent.Cmd{
+	cmd := &serpent.Command{
 		Handler: (func(i *serpent.Invocation) error {
 			gotCtx = i.Context()
 			if err := gotCtx.Err(); err != nil {
@@ -537,8 +537,8 @@ func TestCommand_ContextCancels(t *testing.T) {
 func TestCommand_Help(t *testing.T) {
 	t.Parallel()
 
-	cmd := func() *serpent.Cmd {
-		return &serpent.Cmd{
+	cmd := func() *serpent.Command {
+		return &serpent.Command{
 			Use: "root",
 			HelpHandler: (func(i *serpent.Invocation) error {
 				_, _ = i.Stdout.Write([]byte("abdracadabra"))
@@ -585,9 +585,9 @@ func TestCommand_Help(t *testing.T) {
 func TestCommand_SliceFlags(t *testing.T) {
 	t.Parallel()
 
-	cmd := func(want ...string) *serpent.Cmd {
+	cmd := func(want ...string) *serpent.Command {
 		var got []string
-		return &serpent.Cmd{
+		return &serpent.Command{
 			Use: "root",
 			Options: serpent.OptionSet{
 				{
@@ -614,9 +614,9 @@ func TestCommand_SliceFlags(t *testing.T) {
 func TestCommand_EmptySlice(t *testing.T) {
 	t.Parallel()
 
-	cmd := func(want ...string) *serpent.Cmd {
+	cmd := func(want ...string) *serpent.Command {
 		var got []string
-		return &serpent.Cmd{
+		return &serpent.Command{
 			Use: "root",
 			Options: serpent.OptionSet{
 				{
@@ -667,7 +667,7 @@ func TestCommand_DefaultsOverride(t *testing.T) {
 				got    string
 				config serpent.YAMLConfigPath
 			)
-			cmd := &serpent.Cmd{
+			cmd := &serpent.Command{
 				Options: serpent.OptionSet{
 					{
 						Name:    "url",
