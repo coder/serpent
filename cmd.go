@@ -24,6 +24,8 @@ import (
 // Cmd describes an executable command.
 type Cmd struct {
 	// Parent is the direct parent of the command.
+	//
+	// It is set automatically when an invokation runs.
 	Parent *Cmd
 	// Children is a list of direct descendants.
 	Children []*Cmd
