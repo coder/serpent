@@ -15,11 +15,10 @@ import (
 	"cdr.dev/slog"
 
 	"github.com/spf13/pflag"
+	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
 	"golang.org/x/xerrors"
 	"gopkg.in/yaml.v3"
-
-	"github.com/coder/coder/v2/coderd/util/slice"
 )
 
 // Cmd describes an executable command.
@@ -76,6 +75,15 @@ func (c *Cmd) Walk(fn func(*Cmd)) {
 	}
 }
 
+func ascendingSortFn[T constraints.Ordered](a, b T) int {
+	if a < b {
+		return -1
+	} else if a == b {
+		return 0
+	}
+	return 1
+}
+
 // init performs initialization and linting on the command and all its children.
 func (c *Cmd) init() error {
 	if c.Use == "" {
@@ -109,10 +117,10 @@ func (c *Cmd) init() error {
 	}
 
 	slices.SortFunc(c.Options, func(a, b Option) int {
-		return slice.Ascending(a.Name, b.Name)
+		return ascendingSortFn(a.Name, b.Name)
 	})
 	slices.SortFunc(c.Children, func(a, b *Cmd) int {
-		return slice.Ascending(a.Name(), b.Name())
+		return ascendingSortFn(a.Name(), b.Name())
 	})
 	for _, child := range c.Children {
 		child.Parent = c
