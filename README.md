@@ -7,6 +7,8 @@ It's designed for large-scale CLIs with dozens of commands and hundreds
 of options. If you're building a small, self-contained tool, go with
 cobra.
 
+![help example](./example/help.png)
+
 When compared to cobra, serpent strives for:
 
 * Better default help output inspired by the Go toolchain
