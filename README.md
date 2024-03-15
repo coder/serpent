@@ -88,8 +88,9 @@ type Option struct {
 }
 ```
 
-And is used by each [Command](https://pkg.go.dev/github.com/coder/serpent#Command) when
-passed as an array to the `Options` field.
+And is used by each [Command](https://pkg.go.dev/github.com/coder/serpent#Command) when passed as an array to the `Options` field.
+
+Each Option stores how it was configured in the `ValueSource` field.
 
 ## More coming...
 This README is a stub for now. We'll better explain the design and usage
