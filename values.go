@@ -517,6 +517,17 @@ func (e *Enum) String() string {
 	return *e.Value
 }
 
+func (e *Enum) MarshalYAML() (interface{}, error) {
+	return yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Value: e.String(),
+	}, nil
+}
+
+func (e *Enum) UnmarshalYAML(n *yaml.Node) error {
+	return e.Set(n.Value)
+}
+
 type Regexp regexp.Regexp
 
 func (r *Regexp) MarshalJSON() ([]byte, error) {
