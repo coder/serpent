@@ -13,7 +13,9 @@ function _{{.Name}}_completions
 	# Capture the full command line as an array
 	set -l args (commandline -o)
 
-    COMPLETION_MODE=1 $args
+	set -l cursor_pos (commandline -C)
+
+    COMPLETION_MODE=1 CURSOR_POS=$cursor_pos $args
 end
 
 # Setup Fish to use the function for completions for '{{.Name}}'

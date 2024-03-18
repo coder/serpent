@@ -59,6 +59,13 @@ type Command struct {
 	Middleware  MiddlewareFunc
 	Handler     HandlerFunc
 	HelpHandler HandlerFunc
+	// CompletionHandler is called when the command is run is completion
+	// mode. The HandlerFunc should emit new-line separated suggestions to
+	// stdout.
+	//
+	// Flag and option parsing is best-effort in this mode, so even if an Option
+	// is "required" it may not be set.
+	CompletionHandler HandlerFunc
 }
 
 // AddSubcommands adds the given subcommands, setting their
@@ -193,15 +200,22 @@ type Invocation struct {
 	ctx         context.Context
 	Command     *Command
 	parsedFlags *pflag.FlagSet
-	Args        []string
+
+	// Args is reduced into the remaining arguments after parsing flags
+	// during Run.
+	Args []string
+
 	// Environ is a list of environment variables. Use EnvsWithPrefix to parse
 	// os.Environ.
 	Environ Environ
 	Stdout  io.Writer
 	Stderr  io.Writer
 	Stdin   io.Reader
-	Logger  slog.Logger
-	Net     Net
+
+	// Deprecated
+	Logger slog.Logger
+	// Deprecated
+	Net Net
 
 	// testing
 	signalNotifyContext func(parent context.Context, signals ...os.Signal) (ctx context.Context, stop context.CancelFunc)
@@ -378,8 +392,10 @@ func (inv *Invocation) run(state *runState) error {
 		}
 	}
 
+	ignoreFlagParseErrors := inv.Command.RawArgs || inv.IsCompletionMode()
+
 	// Flag parse errors are irrelevant for raw args commands.
-	if !inv.Command.RawArgs && state.flagParseErr != nil && !errors.Is(state.flagParseErr, pflag.ErrHelp) {
+	if !ignoreFlagParseErrors && state.flagParseErr != nil && !errors.Is(state.flagParseErr, pflag.ErrHelp) {
 		return xerrors.Errorf(
 			"parsing flags (%v) for %q: %w",
 			state.allArgs,
@@ -396,7 +412,7 @@ func (inv *Invocation) run(state *runState) error {
 		}
 	}
 	// Don't error for missing flags if `--help` was supplied.
-	if len(missing) > 0 && !errors.Is(state.flagParseErr, pflag.ErrHelp) {
+	if len(missing) > 0 && !inv.IsCompletionMode() && !errors.Is(state.flagParseErr, pflag.ErrHelp) {
 		return xerrors.Errorf("Missing values for the required flags: %s", strings.Join(missing, ", "))
 	}
 
@@ -436,6 +452,13 @@ func (inv *Invocation) run(state *runState) error {
 			return defaultHelpFn()(inv)
 		}
 		return inv.Command.HelpHandler(inv)
+	}
+
+	if inv.IsCompletionMode() {
+		if inv.Command.CompletionHandler == nil {
+			return DefaultCompletionHandler(NopHandler)(inv)
+		}
+		return inv.Command.CompletionHandler(inv)
 	}
 
 	err = mw(inv.Command.Handler)(inv)
@@ -637,3 +660,5 @@ func RequireRangeArgs(start, end int) MiddlewareFunc {
 
 // HandlerFunc handles an Invocation of a command.
 type HandlerFunc func(i *Invocation) error
+
+var NopHandler HandlerFunc = func(i *Invocation) error { return nil }

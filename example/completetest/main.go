@@ -57,13 +57,7 @@ func main() {
 	}
 
 	inv := cmd.Invoke().WithOS()
-	if completion.IsCompletionMode(inv) {
-		cmd.Walk(
-			func(cmd *serpent.Command) {
-				cmd.Handler = completion.Middleware(nil)(cmd.Handler)
-			},
-		)
-	}
+
 	err := inv.Run()
 	if err != nil {
 		panic(err)
