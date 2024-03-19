@@ -493,6 +493,8 @@ type Enum struct {
 }
 
 func EnumOf(v *string, choices ...string) *Enum {
+	// copy choices to avoid data race during unmarshaling
+	choices = append([]string{}, choices...)
 	return &Enum{
 		Choices: choices,
 		Value:   v,
