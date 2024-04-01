@@ -2,7 +2,6 @@ package serpent
 
 import (
 	"fmt"
-	"strings"
 )
 
 // CompletionModeEnv is a special environment variable that is
@@ -15,14 +14,16 @@ func (inv *Invocation) IsCompletionMode() bool {
 	return ok
 }
 
+// DefaultCompletionHandler returns a handler that prints all
+// known flags and subcommands.
 func DefaultCompletionHandler(next HandlerFunc) HandlerFunc {
 	return func(inv *Invocation) error {
-		words := inv.Args
+		// words := inv.Args
 
-		var curWord string
-		if len(words) > 0 {
-			curWord = words[len(words)-1]
-		}
+		// var curWord string
+		// if len(words) > 0 {
+		// 	curWord = words[len(words)-1]
+		// }
 
 		var allResps []string
 		for _, cmd := range inv.Command.Children {
@@ -34,12 +35,12 @@ func DefaultCompletionHandler(next HandlerFunc) HandlerFunc {
 		}
 
 		for _, resp := range allResps {
-			if !strings.HasPrefix(resp, curWord) {
-				continue
-			}
+			// if !strings.HasPrefix(resp, curWord) {
+			// 	continue
+			// }
 
 			fmt.Fprintf(inv.Stdout, "%s\n", resp)
 		}
-		return nil
+		return next(inv)
 	}
 }
