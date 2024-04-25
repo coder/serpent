@@ -108,6 +108,30 @@ func (Int64) Type() string {
 	return "int"
 }
 
+type Float64 float64
+
+func Float64Of(f *float64) *Float64 {
+	return (*Float64)(f)
+}
+
+func (f *Float64) Set(s string) error {
+	ff, err := strconv.ParseFloat(s, 64)
+	*f = Float64(ff)
+	return err
+}
+
+func (f Float64) Value() float64 {
+	return float64(f)
+}
+
+func (f Float64) String() string {
+	return strconv.FormatFloat(float64(f), 'f', -1, 64)
+}
+
+func (Float64) Type() string {
+	return "float64"
+}
+
 type Bool bool
 
 func BoolOf(b *bool) *Bool {
