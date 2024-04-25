@@ -392,7 +392,12 @@ func (inv *Invocation) run(state *runState) error {
 	var missing []string
 	for _, opt := range inv.Command.Options {
 		if opt.Required && opt.ValueSource == ValueSourceNone {
-			missing = append(missing, opt.Flag)
+			name := opt.Name
+			// use flag as a fallback if name is empty
+			if name == "" {
+				name = opt.Flag
+			}
+			missing = append(missing, name)
 		}
 	}
 	// Don't error for missing flags if `--help` was supplied.
