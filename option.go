@@ -65,6 +65,8 @@ type Option struct {
 	Hidden bool `json:"hidden,omitempty"`
 
 	ValueSource ValueSource `json:"value_source,omitempty"`
+
+	CompletionHandler CompletionHandlerFunc `json:"-"`
 }
 
 // optionNoMethods is just a wrapper around Option so we can defer to the
@@ -339,6 +341,16 @@ func (optSet *OptionSet) ByName(name string) *Option {
 	for i := range *optSet {
 		opt := &(*optSet)[i]
 		if opt.Name == name {
+			return opt
+		}
+	}
+	return nil
+}
+
+func (optSet *OptionSet) ByFlag(flag string) *Option {
+	for i := range *optSet {
+		opt := &(*optSet)[i]
+		if opt.Flag == flag {
 			return opt
 		}
 	}

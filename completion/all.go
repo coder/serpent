@@ -2,6 +2,7 @@ package completion
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -10,7 +11,34 @@ import (
 	"github.com/coder/serpent"
 )
 
-func getUserShell() (string, error) {
+const (
+	BashShell string = "bash"
+	FishShell string = "fish"
+)
+
+var shellCompletionByName = map[string]func(io.Writer, string) error{
+	BashShell: GenerateBashCompletion,
+	FishShell: GenerateFishCompletion,
+}
+
+func ShellOptions(choice *string) *serpent.Enum {
+	return serpent.EnumOf(choice, BashShell, FishShell)
+}
+
+func ShellHandler() serpent.CompletionHandlerFunc {
+	return EnumHandler(BashShell, FishShell)
+}
+
+func GetCompletion(writer io.Writer, shell string, cmdName string) error {
+	fn, ok := shellCompletionByName[shell]
+	if !ok {
+		return fmt.Errorf("unknown shell %q", shell)
+	}
+	fn(writer, cmdName)
+	return nil
+}
+
+func GetUserShell() (string, error) {
 	// Attempt to get the SHELL environment variable first
 	if shell := os.Getenv("SHELL"); shell != "" {
 		return filepath.Base(shell), nil
@@ -39,49 +67,4 @@ func getUserShell() (string, error) {
 	}
 
 	return "", fmt.Errorf("default shell not found")
-}
-
-func rootCommand(cmd *serpent.Command) *serpent.Command {
-	for cmd.Parent != nil {
-		cmd = cmd.Parent
-	}
-	return cmd
-}
-
-// InstallCommand returns a serpent command that helps
-// a user configure their shell to use serpent's completion.
-func InstallCommand() *serpent.Command {
-	defaultShell, err := getUserShell()
-	if err != nil {
-		defaultShell = "bash"
-	}
-
-	var shell string
-	return &serpent.Command{
-		Use:   "completion",
-		Short: "Generate completion scripts for the given shell.",
-		Handler: func(inv *serpent.Invocation) error {
-			switch shell {
-			case "bash":
-				return GenerateBashCompletion(inv.Stdout, rootCommand(inv.Command))
-			case "fish":
-				return GenerateFishCompletion(inv.Stdout, rootCommand(inv.Command))
-			default:
-				return fmt.Errorf("unsupported shell: %s", shell)
-			}
-		},
-		Options: serpent.OptionSet{
-			{
-				Flag:          "shell",
-				FlagShorthand: "s",
-				Default:       defaultShell,
-				Description:   "The shell to generate a completion script for.",
-				Value: serpent.EnumOf(
-					&shell,
-					"bash",
-					"fish",
-				),
-			},
-		},
-	}
 }

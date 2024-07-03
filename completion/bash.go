@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 	"text/template"
-
-	"github.com/coder/serpent"
 )
 
 const bashCompletionTemplate = `
@@ -31,7 +29,7 @@ complete -F _generate_{{.Name}}_completions {{.Name}}
 
 func GenerateBashCompletion(
 	w io.Writer,
-	rootCmd *serpent.Command,
+	rootCmdName string,
 ) error {
 	tmpl, err := template.New("bash").Parse(bashCompletionTemplate)
 	if err != nil {
@@ -41,7 +39,7 @@ func GenerateBashCompletion(
 	err = tmpl.Execute(
 		w,
 		map[string]string{
-			"Name": rootCmd.Name(),
+			"Name": rootCmdName,
 		},
 	)
 	if err != nil {

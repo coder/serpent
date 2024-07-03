@@ -60,12 +60,11 @@ type Command struct {
 	Handler     HandlerFunc
 	HelpHandler HandlerFunc
 	// CompletionHandler is called when the command is run is completion
-	// mode. The HandlerFunc should emit new-line separated suggestions to
-	// stdout.
+	// mode. If nil, only the default completion handler is used.
 	//
 	// Flag and option parsing is best-effort in this mode, so even if an Option
 	// is "required" it may not be set.
-	CompletionHandler HandlerFunc
+	CompletionHandler CompletionHandlerFunc
 }
 
 // AddSubcommands adds the given subcommands, setting their
@@ -188,6 +187,7 @@ func (c *Command) Invoke(args ...string) *Invocation {
 	return &Invocation{
 		Command: c,
 		Args:    args,
+		AllArgs: args,
 		Stdout:  io.Discard,
 		Stderr:  io.Discard,
 		Stdin:   strings.NewReader(""),
@@ -204,6 +204,11 @@ type Invocation struct {
 	// Args is reduced into the remaining arguments after parsing flags
 	// during Run.
 	Args []string
+	// AllArgs is the original arguments passed to the command, including flags.
+	// When invoked `WithOS`, this includes argv[0], otherwise it is the same as Args.
+	AllArgs []string
+	// CurWord is the word the terminal cursor is currently in
+	CurWord string
 
 	// Environ is a list of environment variables. Use EnvsWithPrefix to parse
 	// os.Environ.
@@ -228,6 +233,7 @@ func (inv *Invocation) WithOS() *Invocation {
 		i.Stdout = os.Stdout
 		i.Stderr = os.Stderr
 		i.Stdin = os.Stdin
+		i.AllArgs = os.Args
 		i.Args = os.Args[1:]
 		i.Environ = ParseEnviron(os.Environ(), "")
 		i.Net = osNet{}
@@ -294,6 +300,17 @@ func copyFlagSetWithout(fs *pflag.FlagSet, without string) *pflag.FlagSet {
 		fs2.AddFlag(f)
 	})
 	return fs2
+}
+
+func (inv *Invocation) GetCurWords() (prev string, cur string) {
+	if len(inv.AllArgs) == 1 {
+		cur = inv.AllArgs[0]
+		prev = ""
+	} else {
+		cur = inv.AllArgs[len(inv.AllArgs)-1]
+		prev = inv.AllArgs[len(inv.AllArgs)-2]
+	}
+	return
 }
 
 // run recursively executes the command and its children.
@@ -447,18 +464,41 @@ func (inv *Invocation) run(state *runState) error {
 	defer cancel()
 	inv = inv.WithContext(ctx)
 
+	if inv.IsCompletionMode() {
+		prev, cur := inv.GetCurWords()
+		inv.CurWord = cur
+		if prev != "" {
+			// If the previous word is a flag, we use it's handler
+			if strings.HasPrefix(prev, "--") {
+				opt := inv.Command.Options.ByFlag(prev[2:])
+				if opt != nil && opt.CompletionHandler != nil {
+					for _, e := range opt.CompletionHandler(inv) {
+						fmt.Fprintf(inv.Stdout, "%s\n", e)
+					}
+					return nil
+				}
+			}
+		}
+		if inv.Command.Name() == inv.CurWord {
+			fmt.Fprintf(inv.Stdout, "%s\n", inv.Command.Name())
+			return nil
+		}
+		if inv.Command.CompletionHandler != nil {
+			for _, e := range inv.Command.CompletionHandler(inv) {
+				fmt.Fprintf(inv.Stdout, "%s\n", e)
+			}
+		}
+		for _, e := range DefaultCompletionHandler(inv) {
+			fmt.Fprintf(inv.Stdout, "%s\n", e)
+		}
+		return nil
+	}
+
 	if inv.Command.Handler == nil || errors.Is(state.flagParseErr, pflag.ErrHelp) {
 		if inv.Command.HelpHandler == nil {
 			return defaultHelpFn()(inv)
 		}
 		return inv.Command.HelpHandler(inv)
-	}
-
-	if inv.IsCompletionMode() {
-		if inv.Command.CompletionHandler == nil {
-			return DefaultCompletionHandler(NopHandler)(inv)
-		}
-		return inv.Command.CompletionHandler(inv)
 	}
 
 	err = mw(inv.Command.Handler)(inv)
@@ -522,6 +562,27 @@ func findArg(want string, args []string, fs *pflag.FlagSet) (int, error) {
 
 	return -1, xerrors.Errorf("arg %s not found", want)
 }
+
+// // findArgByPos returns the index of first full word before the given cursor position in the arguments
+// // list. If the cursor is at the end of the line, the last word is returned.
+// func findArgByPos(pos int, args []string) int {
+// 	if pos == 0 {
+// 		return -1
+// 	}
+// 	if len(args) == 0 {
+// 		return -1
+// 	}
+// 	curChar := 0
+// 	for i, arg := range args {
+// 		next := curChar + len(arg)
+// 		if pos <= next {
+// 			return i
+// 		}
+// 		curChar = next + 1
+// 	}
+// 	// Otherwise, must be the last word
+// 	return len(args)
+// }
 
 // Run executes the command.
 // If two command share a flag name, the first command wins.
@@ -660,5 +721,7 @@ func RequireRangeArgs(start, end int) MiddlewareFunc {
 
 // HandlerFunc handles an Invocation of a command.
 type HandlerFunc func(i *Invocation) error
+
+type CompletionHandlerFunc func(i *Invocation) []string
 
 var NopHandler HandlerFunc = func(i *Invocation) error { return nil }

@@ -4,28 +4,23 @@ import (
 	"fmt"
 	"io"
 	"text/template"
-
-	"github.com/coder/serpent"
 )
 
 const fishCompletionTemplate = `
 function _{{.Name}}_completions
 	# Capture the full command line as an array
-	set -l args (commandline -o)
-
-	set -l cursor_pos (commandline -C)
-
-    COMPLETION_MODE=1 CURSOR_POS=$cursor_pos $args
+	set -l args (commandline -opc)
+	set -l current (commandline -ct)
+    COMPLETION_MODE=1 $args $current
 end
 
 # Setup Fish to use the function for completions for '{{.Name}}'
 complete -c {{.Name}} -f -a '(_{{.Name}}_completions)'
-
 `
 
 func GenerateFishCompletion(
 	w io.Writer,
-	rootCmd *serpent.Command,
+	rootCmdName string,
 ) error {
 	tmpl, err := template.New("fish").Parse(fishCompletionTemplate)
 	if err != nil {
@@ -35,7 +30,7 @@ func GenerateFishCompletion(
 	err = tmpl.Execute(
 		w,
 		map[string]string{
-			"Name": rootCmd.Name(),
+			"Name": rootCmdName,
 		},
 	)
 	if err != nil {
