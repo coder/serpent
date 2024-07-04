@@ -8,8 +8,8 @@ import (
 
 const bashCompletionTemplate = `
 _generate_{{.Name}}_completions() {
-    # Capture the full command line as an array, excluding the first element (the command itself)
-    local args=("${COMP_WORDS[@]:1}")
+    # Capture the line excluding the command, and everything after the current word
+    local args=("${COMP_WORDS[@]:1:COMP_CWORD}")
 
     # Set COMPLETION_MODE and call the command with the arguments, capturing the output
     local completions=$(COMPLETION_MODE=1 "{{.Name}}" "${args[@]}")

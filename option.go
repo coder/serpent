@@ -337,19 +337,18 @@ func (optSet *OptionSet) SetDefaults() error {
 
 // ByName returns the Option with the given name, or nil if no such option
 // exists.
-func (optSet *OptionSet) ByName(name string) *Option {
-	for i := range *optSet {
-		opt := &(*optSet)[i]
-		if opt.Name == name {
-			return opt
+func (optSet OptionSet) ByName(name string) *Option {
+	for i := range optSet {
+		if optSet[i].Name == name {
+			return &optSet[i]
 		}
 	}
 	return nil
 }
 
-func (optSet *OptionSet) ByFlag(flag string) *Option {
-	for i := range *optSet {
-		opt := &(*optSet)[i]
+func (optSet OptionSet) ByFlag(flag string) *Option {
+	for i := range optSet {
+		opt := &optSet[i]
 		if opt.Flag == flag {
 			return opt
 		}

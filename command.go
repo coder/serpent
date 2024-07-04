@@ -563,27 +563,6 @@ func findArg(want string, args []string, fs *pflag.FlagSet) (int, error) {
 	return -1, xerrors.Errorf("arg %s not found", want)
 }
 
-// // findArgByPos returns the index of first full word before the given cursor position in the arguments
-// // list. If the cursor is at the end of the line, the last word is returned.
-// func findArgByPos(pos int, args []string) int {
-// 	if pos == 0 {
-// 		return -1
-// 	}
-// 	if len(args) == 0 {
-// 		return -1
-// 	}
-// 	curChar := 0
-// 	for i, arg := range args {
-// 		next := curChar + len(arg)
-// 		if pos <= next {
-// 			return i
-// 		}
-// 		curChar = next + 1
-// 	}
-// 	// Otherwise, must be the last word
-// 	return len(args)
-// }
-
 // Run executes the command.
 // If two command share a flag name, the first command wins.
 //
