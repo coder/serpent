@@ -23,7 +23,7 @@ func TestCompletion(t *testing.T) {
 		io := fakeIO(i)
 		err := i.Run()
 		require.NoError(t, err)
-		require.Equal(t, "file\nrequired-flag\ntoupper\n--prefix\n--verbose\n", io.Stdout.String())
+		require.Equal(t, "altfile\nfile\nrequired-flag\ntoupper\n--prefix\n--verbose\n", io.Stdout.String())
 	})
 
 	t.Run("SubcommandComplete", func(t *testing.T) {
