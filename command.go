@@ -464,19 +464,22 @@ func (inv *Invocation) run(state *runState) error {
 	defer cancel()
 	inv = inv.WithContext(ctx)
 
+	// Outputted completions are not filtered based on the word under the cursor, as every shell we support does this already.
+	// We only look at the current word to figure out handler to run, or what directory to inspect.
 	if inv.IsCompletionMode() {
 		prev, cur := inv.GetCurWords()
 		inv.CurWord = cur
-		if prev != "" {
-			// If the previous word is a flag, we use it's handler
-			if strings.HasPrefix(prev, "--") {
-				opt := inv.Command.Options.ByFlag(prev[2:])
-				if opt != nil && opt.CompletionHandler != nil {
-					for _, e := range opt.CompletionHandler(inv) {
-						fmt.Fprintf(inv.Stdout, "%s\n", e)
-					}
-					return nil
-				}
+		// If the current word is a flag set using `=`, use it's handler
+		if strings.HasPrefix(cur, "--") && strings.Contains(cur, "=") {
+			if inv.equalsFlagHandler(cur) {
+				return nil
+			}
+		}
+		// If the previous word is a flag, then we're writing it's value
+		// and we should check it's handler
+		if strings.HasPrefix(prev, "--") {
+			if inv.flagHandler(prev) {
+				return nil
 			}
 		}
 		if inv.Command.Name() == inv.CurWord {
@@ -614,6 +617,36 @@ func (inv *Invocation) with(fn func(*Invocation)) *Invocation {
 	i2 := *inv
 	fn(&i2)
 	return &i2
+}
+
+func (inv *Invocation) flagHandler(word string) bool {
+	opt := inv.Command.Options.ByFlag(word[2:])
+	if opt != nil && opt.CompletionHandler != nil {
+		for _, e := range opt.CompletionHandler(inv) {
+			fmt.Fprintf(inv.Stdout, "%s\n", e)
+		}
+		return true
+	}
+	return false
+}
+
+func (inv *Invocation) equalsFlagHandler(word string) bool {
+	words := strings.Split(word, "=")
+	word = words[0]
+	if len(words) > 1 {
+		inv.CurWord = words[1]
+	} else {
+		inv.CurWord = ""
+	}
+	outPrefix := word + "="
+	opt := inv.Command.Options.ByFlag(word[2:])
+	if opt != nil && opt.CompletionHandler != nil {
+		for _, e := range opt.CompletionHandler(inv) {
+			fmt.Fprintf(inv.Stdout, "%s%s\n", outPrefix, e)
+		}
+		return true
+	}
+	return false
 }
 
 // MiddlewareFunc returns the next handler in the chain,

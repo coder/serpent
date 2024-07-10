@@ -65,6 +65,16 @@ func TestCompletion(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "foo\nbar\nqux\n", io.Stdout.String())
 	})
+
+	t.Run("EnumEqualsOK", func(t *testing.T) {
+		t.Parallel()
+		i := cmd().Invoke("required-flag", "--req-enum", "--req-enum=")
+		i.Environ.Set(serpent.CompletionModeEnv, "1")
+		io := fakeIO(i)
+		err := i.Run()
+		require.NoError(t, err)
+		require.Equal(t, "--req-enum=foo\n--req-enum=bar\n--req-enum=qux\n", io.Stdout.String())
+	})
 }
 
 func TestFileCompletion(t *testing.T) {
