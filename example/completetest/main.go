@@ -42,6 +42,7 @@ func main() {
 		print    bool
 		upper    bool
 		fileType string
+		fileArr  []string
 	)
 	cmd := serpent.Command{
 		Use:   "completetest <text>",
@@ -104,11 +105,18 @@ func main() {
 						Description:       "The type of file.",
 						CompletionHandler: completion.EnumHandler("binary", "text"),
 					},
+					{
+						Name:        "extra",
+						Flag:        "extra",
+						Description: "Extra files.",
+						Value:       serpent.StringArrayOf(&fileArr),
+						CompletionHandler: completion.FileListHandler(func(info os.FileInfo) bool {
+							return !info.IsDir()
+						}),
+					},
 				},
-				CompletionHandler: completion.FileHandler(func(info os.FileInfo) bool {
-					return true
-				}),
-				Middleware: serpent.RequireNArgs(1),
+				CompletionHandler: completion.FileHandler(nil),
+				Middleware:        serpent.RequireNArgs(1),
 			},
 			InstallCommand(),
 		},

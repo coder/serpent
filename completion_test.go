@@ -1,6 +1,7 @@
 package serpent_test
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -42,17 +43,17 @@ func TestCompletion(t *testing.T) {
 		io := fakeIO(i)
 		err := i.Run()
 		require.NoError(t, err)
-		require.Equal(t, "--req-bool\n--req-enum\n--req-string\n", io.Stdout.String())
+		require.Equal(t, "--req-array\n--req-bool\n--req-enum\n--req-string\n", io.Stdout.String())
 	})
 
 	t.Run("FlagExhaustive", func(t *testing.T) {
 		t.Parallel()
-		i := cmd().Invoke("required-flag", "--req-bool", "--req-string", "foo bar")
+		i := cmd().Invoke("required-flag", "--req-bool", "--req-string", "foo bar", "--req-array", "asdf")
 		i.Environ.Set(serpent.CompletionModeEnv, "1")
 		io := fakeIO(i)
 		err := i.Run()
 		require.NoError(t, err)
-		require.Equal(t, "--req-enum\n", io.Stdout.String())
+		require.Equal(t, "--req-array\n--req-enum\n", io.Stdout.String())
 	})
 
 	t.Run("EnumOK", func(t *testing.T) {
@@ -135,6 +136,32 @@ func TestFileCompletion(t *testing.T) {
 						require.DirExists(t, str)
 					} else {
 						require.FileExists(t, str)
+					}
+				}
+				files, err := os.ReadDir(tc.realPath)
+				require.NoError(t, err)
+				require.Equal(t, len(files), len(output))
+			}
+		})
+		t.Run(tc.name+"/List", func(t *testing.T) {
+			t.Parallel()
+			for _, path := range tc.paths {
+				i := cmd().Invoke("altfile", "--extra", fmt.Sprintf(`"example.go,%s`, path))
+				i.Environ.Set(serpent.CompletionModeEnv, "1")
+				io := fakeIO(i)
+				err := i.Run()
+				require.NoError(t, err)
+				output := strings.Split(io.Stdout.String(), "\n")
+				output = output[:len(output)-1]
+				for _, str := range output {
+					parts := strings.Split(str, ",")
+					require.Len(t, parts, 2)
+					require.Equal(t, parts[0], "example.go")
+					fileComp := parts[1]
+					if strings.HasSuffix(fileComp, "/") {
+						require.DirExists(t, fileComp)
+					} else {
+						require.FileExists(t, fileComp)
 					}
 				}
 				files, err := os.ReadDir(tc.realPath)

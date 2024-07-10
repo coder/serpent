@@ -39,6 +39,8 @@ func SampleCommand(t *testing.T) *serpent.Command {
 		prefix  string
 		reqBool bool
 		reqStr  string
+		reqArr  []string
+		fileArr []string
 		enumStr string
 	)
 	enumChoices := []string{"foo", "bar", "qux"}
@@ -84,6 +86,11 @@ func SampleCommand(t *testing.T) *serpent.Command {
 						Flag:              "req-enum",
 						Value:             serpent.EnumOf(&enumStr, enumChoices...),
 						CompletionHandler: completion.EnumHandler(enumChoices...),
+					},
+					serpent.Option{
+						Name:  "req-array",
+						Flag:  "req-array",
+						Value: serpent.StringArrayOf(&reqArr),
 					},
 				},
 				HelpHandler: func(i *serpent.Invocation) error {
@@ -137,6 +144,21 @@ func SampleCommand(t *testing.T) *serpent.Command {
 					return true
 				}),
 				Middleware: serpent.RequireNArgs(1),
+			},
+			{
+				Use: "altfile",
+				Handler: func(inv *serpent.Invocation) error {
+					return nil
+				},
+				Options: serpent.OptionSet{
+					{
+						Name:              "extra",
+						Flag:              "extra",
+						Description:       "Extra files.",
+						Value:             serpent.StringArrayOf(&fileArr),
+						CompletionHandler: completion.FileListHandler(nil),
+					},
+				},
 			},
 		},
 	}
