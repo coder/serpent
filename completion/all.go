@@ -12,23 +12,25 @@ import (
 )
 
 const (
-	BashShell string = "bash"
-	FishShell string = "fish"
-	ZShell    string = "zsh"
+	BashShell  string = "bash"
+	FishShell  string = "fish"
+	ZShell     string = "zsh"
+	Powershell string = "powershell"
 )
 
 var shellCompletionByName = map[string]func(io.Writer, string) error{
-	BashShell: GenerateBashCompletion,
-	FishShell: GenerateFishCompletion,
-	ZShell:    GenerateZshCompletion,
+	BashShell:  GenerateBashCompletion,
+	FishShell:  GenerateFishCompletion,
+	ZShell:     GenerateZshCompletion,
+	Powershell: GeneratePowershellCompletion,
 }
 
 func ShellOptions(choice *string) *serpent.Enum {
-	return serpent.EnumOf(choice, BashShell, FishShell, ZShell)
+	return serpent.EnumOf(choice, BashShell, FishShell, ZShell, Powershell)
 }
 
 func ShellHandler() serpent.CompletionHandlerFunc {
-	return EnumHandler(BashShell, FishShell, ZShell)
+	return EnumHandler(BashShell, FishShell, ZShell, Powershell)
 }
 
 func GetCompletion(writer io.Writer, shell string, cmdName string) error {

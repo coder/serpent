@@ -68,7 +68,7 @@ func ListFiles(word string, filter func(info os.FileInfo) bool) []string {
 
 		var cur string
 		if info.IsDir() {
-			cur = fmt.Sprintf("%s%s/", dir, info.Name())
+			cur = fmt.Sprintf("%s%s%c", dir, info.Name(), os.PathSeparator)
 		} else {
 			cur = fmt.Sprintf("%s%s", dir, info.Name())
 		}

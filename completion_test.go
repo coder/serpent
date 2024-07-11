@@ -3,7 +3,6 @@ package serpent_test
 import (
 	"fmt"
 	"os"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -80,10 +79,6 @@ func TestCompletion(t *testing.T) {
 func TestFileCompletion(t *testing.T) {
 	t.Parallel()
 
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on Windows")
-	}
-
 	cmd := func() *serpent.Command { return SampleCommand(t) }
 
 	t.Run("DirOK", func(t *testing.T) {
@@ -94,12 +89,12 @@ func TestFileCompletion(t *testing.T) {
 		io := fakeIO(i)
 		err := i.Run()
 		require.NoError(t, err)
-		require.Equal(t, tempDir+"/\n", io.Stdout.String())
+		require.Equal(t, fmt.Sprintf("%s%c\n", tempDir, os.PathSeparator), io.Stdout.String())
 	})
 
 	t.Run("EmptyDirOK", func(t *testing.T) {
 		t.Parallel()
-		tempDir := t.TempDir() + "/"
+		tempDir := t.TempDir() + string(os.PathSeparator)
 		i := cmd().Invoke("file", tempDir)
 		i.Environ.Set(serpent.CompletionModeEnv, "1")
 		io := fakeIO(i)
@@ -142,7 +137,7 @@ func TestFileCompletion(t *testing.T) {
 				output := strings.Split(io.Stdout.String(), "\n")
 				output = output[:len(output)-1]
 				for _, str := range output {
-					if strings.HasSuffix(str, "/") {
+					if strings.HasSuffix(str, string(os.PathSeparator)) {
 						require.DirExists(t, str)
 					} else {
 						require.FileExists(t, str)
@@ -168,7 +163,7 @@ func TestFileCompletion(t *testing.T) {
 					require.Len(t, parts, 2)
 					require.Equal(t, parts[0], "example.go")
 					fileComp := parts[1]
-					if strings.HasSuffix(fileComp, "/") {
+					if strings.HasSuffix(fileComp, string(os.PathSeparator)) {
 						require.DirExists(t, fileComp)
 					} else {
 						require.FileExists(t, fileComp)
