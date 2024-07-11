@@ -7,6 +7,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	"github.com/coder/serpent"
 )
@@ -19,10 +20,10 @@ const (
 )
 
 var shellCompletionByName = map[string]func(io.Writer, string) error{
-	BashShell:  GenerateBashCompletion,
-	FishShell:  GenerateFishCompletion,
-	ZShell:     GenerateZshCompletion,
-	Powershell: GeneratePowershellCompletion,
+	BashShell:  GenerateCompletion(bashCompletionTemplate),
+	FishShell:  GenerateCompletion(fishCompletionTemplate),
+	ZShell:     GenerateCompletion(zshCompletionTemplate),
+	Powershell: GenerateCompletion(pshCompletionTemplate),
 }
 
 func ShellOptions(choice *string) *serpent.Enum {
@@ -71,4 +72,27 @@ func GetUserShell() (string, error) {
 	}
 
 	return "", fmt.Errorf("default shell not found")
+}
+
+func GenerateCompletion(
+	scriptTemplate string,
+) func(io.Writer, string) error {
+	return func(w io.Writer, rootCmdName string) error {
+		tmpl, err := template.New("script").Parse(scriptTemplate)
+		if err != nil {
+			return fmt.Errorf("parse template: %w", err)
+		}
+
+		err = tmpl.Execute(
+			w,
+			map[string]string{
+				"Name": rootCmdName,
+			},
+		)
+		if err != nil {
+			return fmt.Errorf("execute template: %w", err)
+		}
+
+		return nil
+	}
 }

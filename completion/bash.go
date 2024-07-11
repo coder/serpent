@@ -1,11 +1,5 @@
 package completion
 
-import (
-	"fmt"
-	"io"
-	"text/template"
-)
-
 const bashCompletionTemplate = `
 _generate_{{.Name}}_completions() {
     # Capture the line excluding the command, and everything after the current word
@@ -26,25 +20,3 @@ _generate_{{.Name}}_completions() {
 # Setup Bash to use the function for completions for '{{.Name}}'
 complete -F _generate_{{.Name}}_completions {{.Name}}
 `
-
-func GenerateBashCompletion(
-	w io.Writer,
-	rootCmdName string,
-) error {
-	tmpl, err := template.New("bash").Parse(bashCompletionTemplate)
-	if err != nil {
-		return fmt.Errorf("parse template: %w", err)
-	}
-
-	err = tmpl.Execute(
-		w,
-		map[string]string{
-			"Name": rootCmdName,
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("execute template: %w", err)
-	}
-
-	return nil
-}

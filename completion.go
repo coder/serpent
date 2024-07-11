@@ -18,7 +18,7 @@ func DefaultCompletionHandler(inv *Invocation) []string {
 		allResps = append(allResps, cmd.Name())
 	}
 	for _, opt := range inv.Command.Options {
-		if opt.ValueSource == ValueSourceNone || opt.Value.Type() == "string-array" {
+		if opt.ValueSource == ValueSourceNone || opt.ValueSource == ValueSourceDefault || opt.Value.Type() == "string-array" {
 			allResps = append(allResps, "--"+opt.Flag)
 		}
 	}

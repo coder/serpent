@@ -1,11 +1,5 @@
 package completion
 
-import (
-	"fmt"
-	"io"
-	"text/template"
-)
-
 const pshCompletionTemplate = `
 
 # Escaping output sourced from:
@@ -37,7 +31,6 @@ $_{{.Name}}_completions = {
         $Command = $Command + $Space
     }
     # Get completions by calling the command with the COMPLETION_MODE environment variable set to 1
-    "$Command" | Out-File -Append -FilePath "out.log"
     $env:COMPLETION_MODE = 1
     Invoke-Expression $Command | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
         "$_" | _{{.Name}}_escapeStringWithSpecialChars
@@ -47,25 +40,3 @@ $_{{.Name}}_completions = {
 
 Register-ArgumentCompleter -CommandName {{.Name}} -ScriptBlock $_{{.Name}}_completions
 `
-
-func GeneratePowershellCompletion(
-	w io.Writer,
-	rootCmdName string,
-) error {
-	tmpl, err := template.New("powershell").Parse(pshCompletionTemplate)
-	if err != nil {
-		return fmt.Errorf("parse template: %w", err)
-	}
-
-	err = tmpl.Execute(
-		w,
-		map[string]string{
-			"Name": rootCmdName,
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("execute template: %w", err)
-	}
-
-	return nil
-}
