@@ -64,14 +64,16 @@ func SampleCommand(t *testing.T) *serpent.Command {
 				Short: "Example with required flags",
 				Options: serpent.OptionSet{
 					serpent.Option{
-						Name:     "req-bool",
-						Flag:     "req-bool",
-						Value:    serpent.BoolOf(&reqBool),
-						Required: true,
+						Name:          "req-bool",
+						Flag:          "req-bool",
+						FlagShorthand: "b",
+						Value:         serpent.BoolOf(&reqBool),
+						Required:      true,
 					},
 					serpent.Option{
-						Name: "req-string",
-						Flag: "req-string",
+						Name:          "req-string",
+						Flag:          "req-string",
+						FlagShorthand: "s",
 						Value: serpent.Validate(serpent.StringOf(&reqStr), func(value *serpent.String) error {
 							ok := strings.Contains(value.String(), " ")
 							if !ok {
@@ -82,15 +84,15 @@ func SampleCommand(t *testing.T) *serpent.Command {
 						Required: true,
 					},
 					serpent.Option{
-						Name:              "req-enum",
-						Flag:              "req-enum",
-						Value:             serpent.EnumOf(&enumStr, enumChoices...),
-						CompletionHandler: completion.EnumHandler(enumChoices...),
+						Name:  "req-enum",
+						Flag:  "req-enum",
+						Value: serpent.EnumOf(&enumStr, enumChoices...),
 					},
 					serpent.Option{
-						Name:  "req-array",
-						Flag:  "req-array",
-						Value: serpent.StringArrayOf(&reqArr),
+						Name:          "req-array",
+						Flag:          "req-array",
+						FlagShorthand: "a",
+						Value:         serpent.StringArrayOf(&reqArr),
 					},
 				},
 				HelpHandler: func(i *serpent.Invocation) error {

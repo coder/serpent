@@ -25,6 +25,16 @@ func TestCompletion(t *testing.T) {
 		require.Equal(t, "altfile\nfile\nrequired-flag\ntoupper\n--prefix\n--verbose\n", io.Stdout.String())
 	})
 
+	t.Run("SubcommandNoPartial", func(t *testing.T) {
+		t.Parallel()
+		i := cmd().Invoke("f")
+		i.Environ.Set(serpent.CompletionModeEnv, "1")
+		io := fakeIO(i)
+		err := i.Run()
+		require.NoError(t, err)
+		require.Equal(t, "altfile\nfile\nrequired-flag\ntoupper\n--prefix\n--verbose\n", io.Stdout.String())
+	})
+
 	t.Run("SubcommandComplete", func(t *testing.T) {
 		t.Parallel()
 		i := cmd().Invoke("required-flag")
@@ -47,7 +57,17 @@ func TestCompletion(t *testing.T) {
 
 	t.Run("FlagExhaustive", func(t *testing.T) {
 		t.Parallel()
-		i := cmd().Invoke("required-flag", "--req-bool", "--req-string", "foo bar", "--req-array", "asdf")
+		i := cmd().Invoke("required-flag", "--req-bool", "--req-string", "foo bar", "--req-array", "asdf", "--req-array", "qwerty")
+		i.Environ.Set(serpent.CompletionModeEnv, "1")
+		io := fakeIO(i)
+		err := i.Run()
+		require.NoError(t, err)
+		require.Equal(t, "--req-array\n--req-enum\n", io.Stdout.String())
+	})
+
+	t.Run("FlagShorthand", func(t *testing.T) {
+		t.Parallel()
+		i := cmd().Invoke("required-flag", "-b", "-s", "foo bar", "-a", "asdf")
 		i.Environ.Set(serpent.CompletionModeEnv, "1")
 		io := fakeIO(i)
 		err := i.Run()
@@ -74,6 +94,7 @@ func TestCompletion(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "--req-enum=foo\n--req-enum=bar\n--req-enum=qux\n", io.Stdout.String())
 	})
+
 }
 
 func TestFileCompletion(t *testing.T) {

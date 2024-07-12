@@ -26,12 +26,11 @@ func InstallCommand() *serpent.Command {
 		},
 		Options: serpent.OptionSet{
 			{
-				Flag:              "shell",
-				FlagShorthand:     "s",
-				Default:           defaultShell,
-				Description:       "The shell to generate a completion script for.",
-				Value:             completion.ShellOptions(&shell),
-				CompletionHandler: completion.ShellHandler(),
+				Flag:          "shell",
+				FlagShorthand: "s",
+				Default:       defaultShell,
+				Description:   "The shell to generate a completion script for.",
+				Value:         completion.ShellOptions(&shell),
 			},
 		},
 	}
@@ -99,11 +98,10 @@ func main() {
 						Description: "Print the file.",
 					},
 					{
-						Name:              "type",
-						Value:             serpent.EnumOf(&fileType, "binary", "text"),
-						Flag:              "type",
-						Description:       "The type of file.",
-						CompletionHandler: completion.EnumHandler("binary", "text"),
+						Name:        "type",
+						Value:       serpent.EnumOf(&fileType, "binary", "text"),
+						Flag:        "type",
+						Description: "The type of file.",
 					},
 					{
 						Name:        "extra",

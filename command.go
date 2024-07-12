@@ -620,14 +620,7 @@ func (inv *Invocation) with(fn func(*Invocation)) *Invocation {
 }
 
 func (inv *Invocation) flagHandler(word string) bool {
-	opt := inv.Command.Options.ByFlag(word[2:])
-	if opt != nil && opt.CompletionHandler != nil {
-		for _, e := range opt.CompletionHandler(inv) {
-			fmt.Fprintf(inv.Stdout, "%s\n", e)
-		}
-		return true
-	}
-	return false
+	return inv.doFlagCompletion("", word)
 }
 
 func (inv *Invocation) equalsFlagHandler(word string) bool {
@@ -638,11 +631,26 @@ func (inv *Invocation) equalsFlagHandler(word string) bool {
 	} else {
 		inv.CurWord = ""
 	}
-	outPrefix := word + "="
+	prefix := word + "="
+	return inv.doFlagCompletion(prefix, word)
+}
+
+func (inv *Invocation) doFlagCompletion(prefix, word string) bool {
 	opt := inv.Command.Options.ByFlag(word[2:])
-	if opt != nil && opt.CompletionHandler != nil {
-		for _, e := range opt.CompletionHandler(inv) {
-			fmt.Fprintf(inv.Stdout, "%s%s\n", outPrefix, e)
+	if opt == nil {
+		return false
+	}
+	if opt.CompletionHandler != nil {
+		completions := opt.CompletionHandler(inv)
+		for _, completion := range completions {
+			fmt.Fprintf(inv.Stdout, "%s%s\n", prefix, completion)
+		}
+		return true
+	}
+	val, ok := opt.Value.(*Enum)
+	if ok {
+		for _, choice := range val.Choices {
+			fmt.Fprintf(inv.Stdout, "%s%s\n", prefix, choice)
 		}
 		return true
 	}

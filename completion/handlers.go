@@ -9,12 +9,6 @@ import (
 	"github.com/coder/serpent"
 )
 
-func EnumHandler(choices ...string) serpent.CompletionHandlerFunc {
-	return func(inv *serpent.Invocation) []string {
-		return choices
-	}
-}
-
 // FileHandler returns a handler that completes files, using the
 // given filter func, which may be nil.
 func FileHandler(filter func(info os.FileInfo) bool) serpent.CompletionHandlerFunc {

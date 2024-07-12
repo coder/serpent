@@ -30,10 +30,6 @@ func ShellOptions(choice *string) *serpent.Enum {
 	return serpent.EnumOf(choice, BashShell, FishShell, ZShell, Powershell)
 }
 
-func ShellHandler() serpent.CompletionHandlerFunc {
-	return EnumHandler(BashShell, FishShell, ZShell, Powershell)
-}
-
 func GetCompletion(writer io.Writer, shell string, cmdName string) error {
 	fn, ok := shellCompletionByName[shell]
 	if !ok {
