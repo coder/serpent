@@ -55,6 +55,16 @@ func TestCompletion(t *testing.T) {
 		require.Equal(t, "--req-array\n--req-bool\n--req-enum\n--req-string\n", io.Stdout.String())
 	})
 
+	t.Run("ListFlagsAfterArg", func(t *testing.T) {
+		t.Parallel()
+		i := cmd().Invoke("altfile", "")
+		i.Environ.Set(serpent.CompletionModeEnv, "1")
+		io := fakeIO(i)
+		err := i.Run()
+		require.NoError(t, err)
+		require.Equal(t, "doesntexist.go\n--extra\n", io.Stdout.String())
+	})
+
 	t.Run("FlagExhaustive", func(t *testing.T) {
 		t.Parallel()
 		i := cmd().Invoke("required-flag", "--req-bool", "--req-string", "foo bar", "--req-array", "asdf", "--req-array", "qwerty")

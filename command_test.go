@@ -161,6 +161,9 @@ func sampleCommand(t *testing.T) *serpent.Command {
 						CompletionHandler: completion.FileListHandler(nil),
 					},
 				},
+				CompletionHandler: func(i *serpent.Invocation) []string {
+					return []string{"doesntexist.go"}
+				},
 			},
 		},
 	}

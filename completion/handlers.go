@@ -36,7 +36,8 @@ func FileListHandler(filter func(info os.FileInfo) bool) serpent.CompletionHandl
 }
 
 func listFiles(word string, filter func(info os.FileInfo) bool) []string {
-	out := make([]string, 0, 32)
+	// Avoid reallocating for each of the first few files we see.
+	out := make([]string, 0, 16)
 
 	dir, _ := filepath.Split(word)
 	if dir == "" {
