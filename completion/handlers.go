@@ -9,23 +9,24 @@ import (
 	"github.com/coder/serpent"
 )
 
-// FileHandler returns a handler that completes files, using the
+// FileHandler returns a handler that completes file names, using the
 // given filter func, which may be nil.
 func FileHandler(filter func(info os.FileInfo) bool) serpent.CompletionHandlerFunc {
 	return func(inv *serpent.Invocation) []string {
-		return ListFiles(inv.CurWord, filter)
+		return listFiles(inv.CurWord, filter)
 	}
 }
 
+// FileListHandler returns a handler that completes a list of comma-separated,
+// file names, using the given filter func, which may be nil.
 func FileListHandler(filter func(info os.FileInfo) bool) serpent.CompletionHandlerFunc {
 	return func(inv *serpent.Invocation) []string {
 		curWord := strings.TrimLeft(inv.CurWord, `"`)
 		if curWord == "" {
-			return ListFiles("", filter)
+			return listFiles("", filter)
 		}
 		parts := strings.Split(curWord, ",")
-		out := ListFiles(parts[len(parts)-1], filter)
-		// prepend := strings.Join(parts[:len(parts)-1], ",")
+		out := listFiles(parts[len(parts)-1], filter)
 		for i, s := range out {
 			parts[len(parts)-1] = s
 			out[i] = strings.Join(parts, ",")
@@ -34,7 +35,7 @@ func FileListHandler(filter func(info os.FileInfo) bool) serpent.CompletionHandl
 	}
 }
 
-func ListFiles(word string, filter func(info os.FileInfo) bool) []string {
+func listFiles(word string, filter func(info os.FileInfo) bool) []string {
 	out := make([]string, 0, 32)
 
 	dir, _ := filepath.Split(word)

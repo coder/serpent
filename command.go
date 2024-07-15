@@ -59,7 +59,7 @@ type Command struct {
 	Middleware  MiddlewareFunc
 	Handler     HandlerFunc
 	HelpHandler HandlerFunc
-	// CompletionHandler is called when the command is run is completion
+	// CompletionHandler is called when the command is run in completion
 	// mode. If nil, only the default completion handler is used.
 	//
 	// Flag and option parsing is best-effort in this mode, so even if an Option
@@ -187,7 +187,6 @@ func (c *Command) Invoke(args ...string) *Invocation {
 	return &Invocation{
 		Command: c,
 		Args:    args,
-		AllArgs: args,
 		Stdout:  io.Discard,
 		Stderr:  io.Discard,
 		Stdin:   strings.NewReader(""),
@@ -204,9 +203,6 @@ type Invocation struct {
 	// Args is reduced into the remaining arguments after parsing flags
 	// during Run.
 	Args []string
-	// AllArgs is the original arguments passed to the command, including flags.
-	// When invoked `WithOS`, this includes argv[0], otherwise it is the same as Args.
-	AllArgs []string
 	// CurWord is the word the terminal cursor is currently in
 	CurWord string
 
@@ -233,7 +229,6 @@ func (inv *Invocation) WithOS() *Invocation {
 		i.Stdout = os.Stdout
 		i.Stderr = os.Stderr
 		i.Stdin = os.Stdin
-		i.AllArgs = os.Args
 		i.Args = os.Args[1:]
 		i.Environ = ParseEnviron(os.Environ(), "")
 		i.Net = osNet{}
@@ -302,13 +297,13 @@ func copyFlagSetWithout(fs *pflag.FlagSet, without string) *pflag.FlagSet {
 	return fs2
 }
 
-func (inv *Invocation) GetCurWords() (prev string, cur string) {
-	if len(inv.AllArgs) == 1 {
-		cur = inv.AllArgs[0]
+func (inv *Invocation) curWords() (prev string, cur string) {
+	if len(inv.Args) == 1 {
+		cur = inv.Args[0]
 		prev = ""
 	} else {
-		cur = inv.AllArgs[len(inv.AllArgs)-1]
-		prev = inv.AllArgs[len(inv.AllArgs)-2]
+		cur = inv.Args[len(inv.Args)-1]
+		prev = inv.Args[len(inv.Args)-2]
 	}
 	return
 }
@@ -409,7 +404,39 @@ func (inv *Invocation) run(state *runState) error {
 		}
 	}
 
-	ignoreFlagParseErrors := inv.Command.RawArgs || inv.IsCompletionMode()
+	// Outputted completions are not filtered based on the word under the cursor, as every shell we support does this already.
+	// We only look at the current word to figure out handler to run, or what directory to inspect.
+	if inv.IsCompletionMode() {
+		prev, cur := inv.curWords()
+		inv.CurWord = cur
+		// If the current word is a flag set using `=`, use it's handler
+		if strings.HasPrefix(cur, "--") && strings.Contains(cur, "=") {
+			if inv.equalsFlagHandler(cur) {
+				return nil
+			}
+		}
+		// If the previous word is a flag, then we're writing it's value
+		// and we should check it's handler
+		if strings.HasPrefix(prev, "--") {
+			if inv.flagHandler(prev) {
+				return nil
+			}
+		}
+		// If the current word is the command, auto-complete it so the shell moves the cursor
+		if inv.Command.Name() == inv.CurWord {
+			fmt.Fprintf(inv.Stdout, "%s\n", inv.Command.Name())
+			return nil
+		}
+		if inv.Command.CompletionHandler == nil {
+			inv.Command.CompletionHandler = DefaultCompletionHandler
+		}
+		for _, e := range inv.Command.CompletionHandler(inv) {
+			fmt.Fprintf(inv.Stdout, "%s\n", e)
+		}
+		return nil
+	}
+
+	ignoreFlagParseErrors := inv.Command.RawArgs
 
 	// Flag parse errors are irrelevant for raw args commands.
 	if !ignoreFlagParseErrors && state.flagParseErr != nil && !errors.Is(state.flagParseErr, pflag.ErrHelp) {
@@ -463,39 +490,6 @@ func (inv *Invocation) run(state *runState) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	inv = inv.WithContext(ctx)
-
-	// Outputted completions are not filtered based on the word under the cursor, as every shell we support does this already.
-	// We only look at the current word to figure out handler to run, or what directory to inspect.
-	if inv.IsCompletionMode() {
-		prev, cur := inv.GetCurWords()
-		inv.CurWord = cur
-		// If the current word is a flag set using `=`, use it's handler
-		if strings.HasPrefix(cur, "--") && strings.Contains(cur, "=") {
-			if inv.equalsFlagHandler(cur) {
-				return nil
-			}
-		}
-		// If the previous word is a flag, then we're writing it's value
-		// and we should check it's handler
-		if strings.HasPrefix(prev, "--") {
-			if inv.flagHandler(prev) {
-				return nil
-			}
-		}
-		if inv.Command.Name() == inv.CurWord {
-			fmt.Fprintf(inv.Stdout, "%s\n", inv.Command.Name())
-			return nil
-		}
-		if inv.Command.CompletionHandler != nil {
-			for _, e := range inv.Command.CompletionHandler(inv) {
-				fmt.Fprintf(inv.Stdout, "%s\n", e)
-			}
-		}
-		for _, e := range DefaultCompletionHandler(inv) {
-			fmt.Fprintf(inv.Stdout, "%s\n", e)
-		}
-		return nil
-	}
 
 	if inv.Command.Handler == nil || errors.Is(state.flagParseErr, pflag.ErrHelp) {
 		if inv.Command.HelpHandler == nil {
@@ -743,5 +737,3 @@ func RequireRangeArgs(start, end int) MiddlewareFunc {
 type HandlerFunc func(i *Invocation) error
 
 type CompletionHandlerFunc func(i *Invocation) []string
-
-var NopHandler HandlerFunc = func(i *Invocation) error { return nil }

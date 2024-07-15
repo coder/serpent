@@ -8,10 +8,10 @@ import (
 	"github.com/coder/serpent/completion"
 )
 
-// InstallCommand returns a serpent command that helps
+// installCommand returns a serpent command that helps
 // a user configure their shell to use serpent's completion.
-func InstallCommand() *serpent.Command {
-	defaultShell, err := completion.GetUserShell()
+func installCommand() *serpent.Command {
+	defaultShell, err := completion.DetectUserShell()
 	if err != nil {
 		defaultShell = "bash"
 	}
@@ -21,7 +21,7 @@ func InstallCommand() *serpent.Command {
 		Use:   "completion",
 		Short: "Generate completion scripts for the given shell.",
 		Handler: func(inv *serpent.Invocation) error {
-			completion.GetCompletion(inv.Stdout, shell, inv.Command.Parent.Name())
+			completion.WriteCompletion(inv.Stdout, shell, inv.Command.Parent.Name())
 			return nil
 		},
 		Options: serpent.OptionSet{
@@ -116,7 +116,7 @@ func main() {
 				CompletionHandler: completion.FileHandler(nil),
 				Middleware:        serpent.RequireNArgs(1),
 			},
-			InstallCommand(),
+			installCommand(),
 		},
 	}
 

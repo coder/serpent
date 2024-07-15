@@ -20,17 +20,17 @@ const (
 )
 
 var shellCompletionByName = map[string]func(io.Writer, string) error{
-	BashShell:  GenerateCompletion(bashCompletionTemplate),
-	FishShell:  GenerateCompletion(fishCompletionTemplate),
-	ZShell:     GenerateCompletion(zshCompletionTemplate),
-	Powershell: GenerateCompletion(pshCompletionTemplate),
+	BashShell:  generateCompletion(bashCompletionTemplate),
+	FishShell:  generateCompletion(fishCompletionTemplate),
+	ZShell:     generateCompletion(zshCompletionTemplate),
+	Powershell: generateCompletion(pshCompletionTemplate),
 }
 
 func ShellOptions(choice *string) *serpent.Enum {
 	return serpent.EnumOf(choice, BashShell, FishShell, ZShell, Powershell)
 }
 
-func GetCompletion(writer io.Writer, shell string, cmdName string) error {
+func WriteCompletion(writer io.Writer, shell string, cmdName string) error {
 	fn, ok := shellCompletionByName[shell]
 	if !ok {
 		return fmt.Errorf("unknown shell %q", shell)
@@ -39,7 +39,7 @@ func GetCompletion(writer io.Writer, shell string, cmdName string) error {
 	return nil
 }
 
-func GetUserShell() (string, error) {
+func DetectUserShell() (string, error) {
 	// Attempt to get the SHELL environment variable first
 	if shell := os.Getenv("SHELL"); shell != "" {
 		return filepath.Base(shell), nil
@@ -70,7 +70,7 @@ func GetUserShell() (string, error) {
 	return "", fmt.Errorf("default shell not found")
 }
 
-func GenerateCompletion(
+func generateCompletion(
 	scriptTemplate string,
 ) func(io.Writer, string) error {
 	return func(w io.Writer, rootCmdName string) error {

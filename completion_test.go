@@ -13,7 +13,7 @@ import (
 func TestCompletion(t *testing.T) {
 	t.Parallel()
 
-	cmd := func() *serpent.Command { return SampleCommand(t) }
+	cmd := func() *serpent.Command { return sampleCommand(t) }
 
 	t.Run("SubcommandList", func(t *testing.T) {
 		t.Parallel()
@@ -100,7 +100,7 @@ func TestCompletion(t *testing.T) {
 func TestFileCompletion(t *testing.T) {
 	t.Parallel()
 
-	cmd := func() *serpent.Command { return SampleCommand(t) }
+	cmd := func() *serpent.Command { return sampleCommand(t) }
 
 	t.Run("DirOK", func(t *testing.T) {
 		t.Parallel()

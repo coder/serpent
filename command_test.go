@@ -31,7 +31,7 @@ func fakeIO(i *serpent.Invocation) *ioBufs {
 	return &b
 }
 
-func SampleCommand(t *testing.T) *serpent.Command {
+func sampleCommand(t *testing.T) *serpent.Command {
 	t.Helper()
 	var (
 		verbose bool
@@ -169,7 +169,7 @@ func SampleCommand(t *testing.T) *serpent.Command {
 func TestCommand(t *testing.T) {
 	t.Parallel()
 
-	cmd := func() *serpent.Command { return SampleCommand(t) }
+	cmd := func() *serpent.Command { return sampleCommand(t) }
 
 	t.Run("SimpleOK", func(t *testing.T) {
 		t.Parallel()
