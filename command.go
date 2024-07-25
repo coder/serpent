@@ -203,8 +203,6 @@ type Invocation struct {
 	// Args is reduced into the remaining arguments after parsing flags
 	// during Run.
 	Args []string
-	// CurWord is the word the terminal cursor is currently in
-	CurWord string
 
 	// Environ is a list of environment variables. Use EnvsWithPrefix to parse
 	// os.Environ.
@@ -297,7 +295,7 @@ func copyFlagSetWithout(fs *pflag.FlagSet, without string) *pflag.FlagSet {
 	return fs2
 }
 
-func (inv *Invocation) curWords() (prev string, cur string) {
+func (inv *Invocation) CurWords() (prev string, cur string) {
 	if len(inv.Args) == 1 {
 		cur = inv.Args[0]
 		prev = ""
@@ -407,7 +405,7 @@ func (inv *Invocation) run(state *runState) error {
 	// Outputted completions are not filtered based on the word under the cursor, as every shell we support does this already.
 	// We only look at the current word to figure out handler to run, or what directory to inspect.
 	if inv.IsCompletionMode() {
-		for _, e := range inv.doCompletions() {
+		for _, e := range inv.complete() {
 			fmt.Fprintln(inv.Stdout, e)
 		}
 		return nil
@@ -590,24 +588,36 @@ func (inv *Invocation) with(fn func(*Invocation)) *Invocation {
 	return &i2
 }
 
-func (inv *Invocation) doCompletions() []string {
-	prev, cur := inv.curWords()
-	inv.CurWord = cur
-	// If the current word is a flag set using `=`, use it's handler
-	if strings.HasPrefix(cur, "--") && strings.Contains(cur, "=") {
-		if out := inv.equalsFlagCompletions(cur); out != nil {
-			return out
+func (inv *Invocation) complete() []string {
+	prev, cur := inv.CurWords()
+
+	if strings.HasPrefix(cur, "--") {
+		// If the current word is a flag set using `=`, use it's handler
+		if strings.Contains(cur, "=") {
+			words := strings.Split(cur, "=")
+			flagName := words[0][2:]
+			if out := inv.completeFlag(flagName); out != nil {
+				for i, o := range out {
+					out[i] = fmt.Sprintf("--%s=%s", flagName, o)
+				}
+				return out
+			}
+		} else if out := inv.Command.Options.ByFlag(cur[2:]); out != nil {
+			// If the current word is a complete flag, auto-complete it so the
+			// shell moves the cursor
+			return []string{cur}
 		}
 	}
 	// If the previous word is a flag, then we're writing it's value
 	// and we should check it's handler
 	if strings.HasPrefix(prev, "--") {
-		if out := inv.flagCompletions(prev); out != nil {
+		word := prev[2:]
+		if out := inv.completeFlag(word); out != nil {
 			return out
 		}
 	}
-	// If the current word is the command, auto-complete it so the shell moves the cursor
-	if inv.Command.Name() == inv.CurWord {
+	// If the current word is the command, move the shell cursor
+	if inv.Command.Name() == cur {
 		return []string{inv.Command.Name()}
 	}
 	var completions []string
@@ -621,43 +631,17 @@ func (inv *Invocation) doCompletions() []string {
 	return completions
 }
 
-func (inv *Invocation) flagCompletions(word string) []string {
-	return inv.doFlagCompletions("", word)
-}
-
-func (inv *Invocation) equalsFlagCompletions(word string) []string {
-	words := strings.Split(word, "=")
-	word = words[0]
-	if len(words) > 1 {
-		inv.CurWord = words[1]
-	} else {
-		inv.CurWord = ""
-	}
-	prefix := word + "="
-	return inv.doFlagCompletions(prefix, word)
-}
-
-func (inv *Invocation) doFlagCompletions(prefix, word string) []string {
-	opt := inv.Command.Options.ByFlag(word[2:])
+func (inv *Invocation) completeFlag(word string) []string {
+	opt := inv.Command.Options.ByFlag(word)
 	if opt == nil {
 		return nil
 	}
 	if opt.CompletionHandler != nil {
-		completions := opt.CompletionHandler(inv)
-		out := make([]string, 0, len(completions))
-		for _, completion := range completions {
-			out = append(out, fmt.Sprintf("%s%s", prefix, completion))
-		}
-		return out
+		return opt.CompletionHandler(inv)
 	}
 	val, ok := opt.Value.(*Enum)
 	if ok {
-		completions := val.Choices
-		out := make([]string, 0, len(completions))
-		for _, choice := range completions {
-			out = append(out, fmt.Sprintf("%s%s", prefix, choice))
-		}
-		return out
+		return val.Choices
 	}
 	return nil
 }

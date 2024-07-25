@@ -85,6 +85,16 @@ func TestCompletion(t *testing.T) {
 		require.Equal(t, "--req-array\n--req-enum\n", io.Stdout.String())
 	})
 
+	t.Run("NoOptDefValueFlag", func(t *testing.T) {
+		t.Parallel()
+		i := cmd().Invoke("--verbose", "")
+		i.Environ.Set(serpent.CompletionModeEnv, "1")
+		io := fakeIO(i)
+		err := i.Run()
+		require.NoError(t, err)
+		require.Equal(t, "altfile\nfile\nrequired-flag\ntoupper\n--prefix\n", io.Stdout.String())
+	})
+
 	t.Run("EnumOK", func(t *testing.T) {
 		t.Parallel()
 		i := cmd().Invoke("required-flag", "--req-enum", "")
@@ -98,6 +108,16 @@ func TestCompletion(t *testing.T) {
 	t.Run("EnumEqualsOK", func(t *testing.T) {
 		t.Parallel()
 		i := cmd().Invoke("required-flag", "--req-enum", "--req-enum=")
+		i.Environ.Set(serpent.CompletionModeEnv, "1")
+		io := fakeIO(i)
+		err := i.Run()
+		require.NoError(t, err)
+		require.Equal(t, "--req-enum=foo\n--req-enum=bar\n--req-enum=qux\n", io.Stdout.String())
+	})
+
+	t.Run("EnumEqualsBeginQuotesOK", func(t *testing.T) {
+		t.Parallel()
+		i := cmd().Invoke("required-flag", "--req-enum", "--req-enum=\"")
 		i.Environ.Set(serpent.CompletionModeEnv, "1")
 		io := fakeIO(i)
 		err := i.Run()
@@ -172,32 +192,6 @@ func TestFileCompletion(t *testing.T) {
 						require.DirExists(t, str)
 					} else {
 						require.FileExists(t, str)
-					}
-				}
-				files, err := os.ReadDir(tc.realPath)
-				require.NoError(t, err)
-				require.Equal(t, len(files), len(output))
-			}
-		})
-		t.Run(tc.name+"/List", func(t *testing.T) {
-			t.Parallel()
-			for _, path := range tc.paths {
-				i := cmd().Invoke("altfile", "--extra", fmt.Sprintf(`"example.go,%s`, path))
-				i.Environ.Set(serpent.CompletionModeEnv, "1")
-				io := fakeIO(i)
-				err := i.Run()
-				require.NoError(t, err)
-				output := strings.Split(io.Stdout.String(), "\n")
-				output = output[:len(output)-1]
-				for _, str := range output {
-					parts := strings.Split(str, ",")
-					require.Len(t, parts, 2)
-					require.Equal(t, parts[0], "example.go")
-					fileComp := parts[1]
-					if strings.HasSuffix(fileComp, string(os.PathSeparator)) {
-						require.DirExists(t, fileComp)
-					} else {
-						require.FileExists(t, fileComp)
 					}
 				}
 				files, err := os.ReadDir(tc.realPath)

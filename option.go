@@ -347,6 +347,9 @@ func (optSet OptionSet) ByName(name string) *Option {
 }
 
 func (optSet OptionSet) ByFlag(flag string) *Option {
+	if flag == "" {
+		return nil
+	}
 	for i := range optSet {
 		opt := &optSet[i]
 		if opt.Flag == flag || opt.FlagShorthand == flag {

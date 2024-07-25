@@ -108,9 +108,6 @@ func main() {
 						Flag:        "extra",
 						Description: "Extra files.",
 						Value:       serpent.StringArrayOf(&fileArr),
-						CompletionHandler: completion.FileListHandler(func(info os.FileInfo) bool {
-							return !info.IsDir()
-						}),
 					},
 				},
 				CompletionHandler: completion.FileHandler(nil),

@@ -154,11 +154,10 @@ func sampleCommand(t *testing.T) *serpent.Command {
 				},
 				Options: serpent.OptionSet{
 					{
-						Name:              "extra",
-						Flag:              "extra",
-						Description:       "Extra files.",
-						Value:             serpent.StringArrayOf(&fileArr),
-						CompletionHandler: completion.FileListHandler(nil),
+						Name:        "extra",
+						Flag:        "extra",
+						Description: "Extra files.",
+						Value:       serpent.StringArrayOf(&fileArr),
 					},
 				},
 				CompletionHandler: func(i *serpent.Invocation) []string {
