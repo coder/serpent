@@ -591,19 +591,20 @@ func (inv *Invocation) with(fn func(*Invocation)) *Invocation {
 func (inv *Invocation) complete() []string {
 	prev, cur := inv.CurWords()
 
+	// If the current word is a flag
 	if strings.HasPrefix(cur, "--") {
-		// If the current word is a flag set using `=`, use it's handler
-		if strings.Contains(cur, "=") {
-			words := strings.Split(cur, "=")
-			flagName := words[0][2:]
+		flagParts := strings.Split(cur, "=")
+		flagName := flagParts[0][2:]
+		// If it's an equals flag
+		if len(flagParts) == 2 {
 			if out := inv.completeFlag(flagName); out != nil {
 				for i, o := range out {
 					out[i] = fmt.Sprintf("--%s=%s", flagName, o)
 				}
 				return out
 			}
-		} else if out := inv.Command.Options.ByFlag(cur[2:]); out != nil {
-			// If the current word is a complete flag, auto-complete it so the
+		} else if out := inv.Command.Options.ByFlag(flagName); out != nil {
+			// If the current word is a valid flag, auto-complete it so the
 			// shell moves the cursor
 			return []string{cur}
 		}
