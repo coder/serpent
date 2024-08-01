@@ -59,6 +59,12 @@ type Command struct {
 	Middleware  MiddlewareFunc
 	Handler     HandlerFunc
 	HelpHandler HandlerFunc
+	// CompletionHandler is called when the command is run in completion
+	// mode. If nil, only the default completion handler is used.
+	//
+	// Flag and option parsing is best-effort in this mode, so even if an Option
+	// is "required" it may not be set.
+	CompletionHandler CompletionHandlerFunc
 }
 
 // AddSubcommands adds the given subcommands, setting their
@@ -193,15 +199,22 @@ type Invocation struct {
 	ctx         context.Context
 	Command     *Command
 	parsedFlags *pflag.FlagSet
-	Args        []string
+
+	// Args is reduced into the remaining arguments after parsing flags
+	// during Run.
+	Args []string
+
 	// Environ is a list of environment variables. Use EnvsWithPrefix to parse
 	// os.Environ.
 	Environ Environ
 	Stdout  io.Writer
 	Stderr  io.Writer
 	Stdin   io.Reader
-	Logger  slog.Logger
-	Net     Net
+
+	// Deprecated
+	Logger slog.Logger
+	// Deprecated
+	Net Net
 
 	// testing
 	signalNotifyContext func(parent context.Context, signals ...os.Signal) (ctx context.Context, stop context.CancelFunc)
@@ -280,6 +293,17 @@ func copyFlagSetWithout(fs *pflag.FlagSet, without string) *pflag.FlagSet {
 		fs2.AddFlag(f)
 	})
 	return fs2
+}
+
+func (inv *Invocation) CurWords() (prev string, cur string) {
+	if len(inv.Args) == 1 {
+		cur = inv.Args[0]
+		prev = ""
+	} else {
+		cur = inv.Args[len(inv.Args)-1]
+		prev = inv.Args[len(inv.Args)-2]
+	}
+	return
 }
 
 // run recursively executes the command and its children.
@@ -378,8 +402,19 @@ func (inv *Invocation) run(state *runState) error {
 		}
 	}
 
+	// Outputted completions are not filtered based on the word under the cursor, as every shell we support does this already.
+	// We only look at the current word to figure out handler to run, or what directory to inspect.
+	if inv.IsCompletionMode() {
+		for _, e := range inv.complete() {
+			fmt.Fprintln(inv.Stdout, e)
+		}
+		return nil
+	}
+
+	ignoreFlagParseErrors := inv.Command.RawArgs
+
 	// Flag parse errors are irrelevant for raw args commands.
-	if !inv.Command.RawArgs && state.flagParseErr != nil && !errors.Is(state.flagParseErr, pflag.ErrHelp) {
+	if !ignoreFlagParseErrors && state.flagParseErr != nil && !errors.Is(state.flagParseErr, pflag.ErrHelp) {
 		return xerrors.Errorf(
 			"parsing flags (%v) for %q: %w",
 			state.allArgs,
@@ -401,7 +436,7 @@ func (inv *Invocation) run(state *runState) error {
 		}
 	}
 	// Don't error for missing flags if `--help` was supplied.
-	if len(missing) > 0 && !errors.Is(state.flagParseErr, pflag.ErrHelp) {
+	if len(missing) > 0 && !inv.IsCompletionMode() && !errors.Is(state.flagParseErr, pflag.ErrHelp) {
 		return xerrors.Errorf("Missing values for the required flags: %s", strings.Join(missing, ", "))
 	}
 
@@ -558,6 +593,65 @@ func (inv *Invocation) with(fn func(*Invocation)) *Invocation {
 	return &i2
 }
 
+func (inv *Invocation) complete() []string {
+	prev, cur := inv.CurWords()
+
+	// If the current word is a flag
+	if strings.HasPrefix(cur, "--") {
+		flagParts := strings.Split(cur, "=")
+		flagName := flagParts[0][2:]
+		// If it's an equals flag
+		if len(flagParts) == 2 {
+			if out := inv.completeFlag(flagName); out != nil {
+				for i, o := range out {
+					out[i] = fmt.Sprintf("--%s=%s", flagName, o)
+				}
+				return out
+			}
+		} else if out := inv.Command.Options.ByFlag(flagName); out != nil {
+			// If the current word is a valid flag, auto-complete it so the
+			// shell moves the cursor
+			return []string{cur}
+		}
+	}
+	// If the previous word is a flag, then we're writing it's value
+	// and we should check it's handler
+	if strings.HasPrefix(prev, "--") {
+		word := prev[2:]
+		if out := inv.completeFlag(word); out != nil {
+			return out
+		}
+	}
+	// If the current word is the command, move the shell cursor
+	if inv.Command.Name() == cur {
+		return []string{inv.Command.Name()}
+	}
+	var completions []string
+
+	if inv.Command.CompletionHandler != nil {
+		completions = append(completions, inv.Command.CompletionHandler(inv)...)
+	}
+
+	completions = append(completions, DefaultCompletionHandler(inv)...)
+
+	return completions
+}
+
+func (inv *Invocation) completeFlag(word string) []string {
+	opt := inv.Command.Options.ByFlag(word)
+	if opt == nil {
+		return nil
+	}
+	if opt.CompletionHandler != nil {
+		return opt.CompletionHandler(inv)
+	}
+	val, ok := opt.Value.(*Enum)
+	if ok {
+		return val.Choices
+	}
+	return nil
+}
+
 // MiddlewareFunc returns the next handler in the chain,
 // or nil if there are no more.
 type MiddlewareFunc func(next HandlerFunc) HandlerFunc
@@ -642,3 +736,5 @@ func RequireRangeArgs(start, end int) MiddlewareFunc {
 
 // HandlerFunc handles an Invocation of a command.
 type HandlerFunc func(i *Invocation) error
+
+type CompletionHandlerFunc func(i *Invocation) []string

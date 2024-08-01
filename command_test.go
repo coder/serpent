@@ -12,6 +12,7 @@ import (
 	"golang.org/x/xerrors"
 
 	serpent "github.com/coder/serpent"
+	"github.com/coder/serpent/completion"
 )
 
 // ioBufs is the standard input, output, and error for a command.
@@ -30,100 +31,147 @@ func fakeIO(i *serpent.Invocation) *ioBufs {
 	return &b
 }
 
+func sampleCommand(t *testing.T) *serpent.Command {
+	t.Helper()
+	var (
+		verbose bool
+		lower   bool
+		prefix  string
+		reqBool bool
+		reqStr  string
+		reqArr  []string
+		fileArr []string
+		enumStr string
+	)
+	enumChoices := []string{"foo", "bar", "qux"}
+	return &serpent.Command{
+		Use: "root [subcommand]",
+		Options: serpent.OptionSet{
+			serpent.Option{
+				Name:  "verbose",
+				Flag:  "verbose",
+				Value: serpent.BoolOf(&verbose),
+			},
+			serpent.Option{
+				Name:  "prefix",
+				Flag:  "prefix",
+				Value: serpent.StringOf(&prefix),
+			},
+		},
+		Children: []*serpent.Command{
+			{
+				Use:   "required-flag --req-bool=true --req-string=foo",
+				Short: "Example with required flags",
+				Options: serpent.OptionSet{
+					serpent.Option{
+						Name:          "req-bool",
+						Flag:          "req-bool",
+						FlagShorthand: "b",
+						Value:         serpent.BoolOf(&reqBool),
+						Required:      true,
+					},
+					serpent.Option{
+						Name:          "req-string",
+						Flag:          "req-string",
+						FlagShorthand: "s",
+						Value: serpent.Validate(serpent.StringOf(&reqStr), func(value *serpent.String) error {
+							ok := strings.Contains(value.String(), " ")
+							if !ok {
+								return xerrors.Errorf("string must contain a space")
+							}
+							return nil
+						}),
+						Required: true,
+					},
+					serpent.Option{
+						Name:  "req-enum",
+						Flag:  "req-enum",
+						Value: serpent.EnumOf(&enumStr, enumChoices...),
+					},
+					serpent.Option{
+						Name:          "req-array",
+						Flag:          "req-array",
+						FlagShorthand: "a",
+						Value:         serpent.StringArrayOf(&reqArr),
+					},
+				},
+				HelpHandler: func(i *serpent.Invocation) error {
+					_, _ = i.Stdout.Write([]byte("help text.png"))
+					return nil
+				},
+				Handler: func(i *serpent.Invocation) error {
+					_, _ = i.Stdout.Write([]byte(fmt.Sprintf("%s-%t", reqStr, reqBool)))
+					return nil
+				},
+			},
+			{
+				Use:   "toupper [word]",
+				Short: "Converts a word to upper case",
+				Middleware: serpent.Chain(
+					serpent.RequireNArgs(1),
+				),
+				Aliases: []string{"up"},
+				Options: serpent.OptionSet{
+					serpent.Option{
+						Name:  "lower",
+						Flag:  "lower",
+						Value: serpent.BoolOf(&lower),
+					},
+				},
+				Handler: func(i *serpent.Invocation) error {
+					_, _ = i.Stdout.Write([]byte(prefix))
+					w := i.Args[0]
+					if lower {
+						w = strings.ToLower(w)
+					} else {
+						w = strings.ToUpper(w)
+					}
+					_, _ = i.Stdout.Write(
+						[]byte(
+							w,
+						),
+					)
+					if verbose {
+						_, _ = i.Stdout.Write([]byte("!!!"))
+					}
+					return nil
+				},
+			},
+			{
+				Use: "file <file>",
+				Handler: func(inv *serpent.Invocation) error {
+					return nil
+				},
+				CompletionHandler: completion.FileHandler(func(info os.FileInfo) bool {
+					return true
+				}),
+				Middleware: serpent.RequireNArgs(1),
+			},
+			{
+				Use: "altfile",
+				Handler: func(inv *serpent.Invocation) error {
+					return nil
+				},
+				Options: serpent.OptionSet{
+					{
+						Name:        "extra",
+						Flag:        "extra",
+						Description: "Extra files.",
+						Value:       serpent.StringArrayOf(&fileArr),
+					},
+				},
+				CompletionHandler: func(i *serpent.Invocation) []string {
+					return []string{"doesntexist.go"}
+				},
+			},
+		},
+	}
+}
+
 func TestCommand(t *testing.T) {
 	t.Parallel()
 
-	cmd := func() *serpent.Command {
-		var (
-			verbose bool
-			lower   bool
-			prefix  string
-			reqBool bool
-			reqStr  string
-		)
-		return &serpent.Command{
-			Use: "root [subcommand]",
-			Options: serpent.OptionSet{
-				serpent.Option{
-					Name:  "verbose",
-					Flag:  "verbose",
-					Value: serpent.BoolOf(&verbose),
-				},
-				serpent.Option{
-					Name:  "prefix",
-					Flag:  "prefix",
-					Value: serpent.StringOf(&prefix),
-				},
-			},
-			Children: []*serpent.Command{
-				{
-					Use:   "required-flag --req-bool=true --req-string=foo",
-					Short: "Example with required flags",
-					Options: serpent.OptionSet{
-						serpent.Option{
-							Name:     "req-bool",
-							Flag:     "req-bool",
-							Value:    serpent.BoolOf(&reqBool),
-							Required: true,
-						},
-						serpent.Option{
-							Name: "req-string",
-							Flag: "req-string",
-							Value: serpent.Validate(serpent.StringOf(&reqStr), func(value *serpent.String) error {
-								ok := strings.Contains(value.String(), " ")
-								if !ok {
-									return xerrors.Errorf("string must contain a space")
-								}
-								return nil
-							}),
-							Required: true,
-						},
-					},
-					HelpHandler: func(i *serpent.Invocation) error {
-						_, _ = i.Stdout.Write([]byte("help text.png"))
-						return nil
-					},
-					Handler: func(i *serpent.Invocation) error {
-						_, _ = i.Stdout.Write([]byte(fmt.Sprintf("%s-%t", reqStr, reqBool)))
-						return nil
-					},
-				},
-				{
-					Use:   "toupper [word]",
-					Short: "Converts a word to upper case",
-					Middleware: serpent.Chain(
-						serpent.RequireNArgs(1),
-					),
-					Aliases: []string{"up"},
-					Options: serpent.OptionSet{
-						serpent.Option{
-							Name:  "lower",
-							Flag:  "lower",
-							Value: serpent.BoolOf(&lower),
-						},
-					},
-					Handler: func(i *serpent.Invocation) error {
-						_, _ = i.Stdout.Write([]byte(prefix))
-						w := i.Args[0]
-						if lower {
-							w = strings.ToLower(w)
-						} else {
-							w = strings.ToUpper(w)
-						}
-						_, _ = i.Stdout.Write(
-							[]byte(
-								w,
-							),
-						)
-						if verbose {
-							_, _ = i.Stdout.Write([]byte("!!!"))
-						}
-						return nil
-					},
-				},
-			},
-		}
-	}
+	cmd := func() *serpent.Command { return sampleCommand(t) }
 
 	t.Run("SimpleOK", func(t *testing.T) {
 		t.Parallel()
