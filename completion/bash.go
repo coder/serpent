@@ -1,6 +1,53 @@
 package completion
 
+import (
+	"io"
+	"path/filepath"
+
+	home "github.com/mitchellh/go-homedir"
+)
+
+type bash struct {
+	goos        string
+	programName string
+}
+
+var _ Shell = &bash{}
+
+func Bash(goos string, programName string) Shell {
+	return &bash{goos: goos, programName: programName}
+}
+
+// Name implements Shell.
+func (b *bash) Name() string {
+	return "bash"
+}
+
+// UsesOwnFile implements Shell.
+func (b *bash) UsesOwnFile() bool {
+	return false
+}
+
+// InstallPath implements Shell.
+func (b *bash) InstallPath() (string, error) {
+	homeDir, err := home.Dir()
+	if err != nil {
+		return "", err
+	}
+	if b.goos == "darwin" {
+		return filepath.Join(homeDir, ".bash_profile"), nil
+	}
+	return filepath.Join(homeDir, ".bashrc"), nil
+}
+
+// WriteCompletion implements Shell.
+func (b *bash) WriteCompletion(w io.Writer) error {
+	return generateCompletion(bashCompletionTemplate)(w, b.programName)
+}
+
 const bashCompletionTemplate = `
+
+# === BEGIN {{.Name}} COMPLETION ===
 _generate_{{.Name}}_completions() {
     # Capture the line excluding the command, and everything after the current word
     local args=("${COMP_WORDS[@]:1:COMP_CWORD}")
@@ -16,7 +63,8 @@ _generate_{{.Name}}_completions() {
         COMPREPLY=()
     fi
 }
-
 # Setup Bash to use the function for completions for '{{.Name}}'
 complete -F _generate_{{.Name}}_completions {{.Name}}
+# === END {{.Name}} COMPLETION ===
+
 `

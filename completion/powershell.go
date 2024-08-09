@@ -1,7 +1,58 @@
 package completion
 
+import (
+	"io"
+	"os/exec"
+	"strings"
+)
+
+type powershell struct {
+	goos        string
+	programName string
+}
+
+// Name implements Shell.
+func (p *powershell) Name() string {
+	return "powershell"
+}
+
+func Powershell(goos string, programName string) Shell {
+	return &powershell{goos: goos, programName: programName}
+}
+
+// UsesOwnFile implements Shell.
+func (p *powershell) UsesOwnFile() bool {
+	return false
+}
+
+// InstallPath implements Shell.
+func (p *powershell) InstallPath() (string, error) {
+	var (
+		path []byte
+		err  error
+	)
+	cmd := "$PROFILE.CurrentUserAllHosts"
+	if p.goos == "windows" {
+		path, err = exec.Command("powershell", cmd).CombinedOutput()
+	} else {
+		path, err = exec.Command("pwsh", "-Command", cmd).CombinedOutput()
+	}
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(path)), nil
+}
+
+// WriteCompletion implements Shell.
+func (p *powershell) WriteCompletion(w io.Writer) error {
+	return generateCompletion(pshCompletionTemplate)(w, p.programName)
+}
+
+var _ Shell = &powershell{}
+
 const pshCompletionTemplate = `
 
+# === BEGIN {{.Name}} COMPLETION ===
 # Escaping output sourced from:
 # https://github.com/spf13/cobra/blob/e94f6d0dd9a5e5738dca6bce03c4b1207ffbc0ec/powershell_completions.go#L47
 filter _{{.Name}}_escapeStringWithSpecialChars {
@@ -37,6 +88,7 @@ $_{{.Name}}_completions = {
     }
     rm env:COMPLETION_MODE
 }
-
 Register-ArgumentCompleter -CommandName {{.Name}} -ScriptBlock $_{{.Name}}_completions
+# === END {{.Name}} COMPLETION ===
+
 `
