@@ -645,9 +645,13 @@ func (inv *Invocation) completeFlag(word string) []string {
 	if opt.CompletionHandler != nil {
 		return opt.CompletionHandler(inv)
 	}
-	val, ok := opt.Value.(*Enum)
+	enum, ok := opt.Value.(*Enum)
 	if ok {
-		return val.Choices
+		return enum.Choices
+	}
+	enumArr, ok := opt.Value.(*EnumArray)
+	if ok {
+		return enumArr.Choices
 	}
 	return nil
 }

@@ -95,6 +95,8 @@ var defaultHelpTemplate = func() *template.Template {
 					switch v := opt.Value.(type) {
 					case *Enum:
 						return strings.Join(v.Choices, "|")
+					case *EnumArray:
+						return fmt.Sprintf("[%s]", strings.Join(v.Choices, "|"))
 					default:
 						return v.Type()
 					}

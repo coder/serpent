@@ -52,7 +52,7 @@ func TestCompletion(t *testing.T) {
 		io := fakeIO(i)
 		err := i.Run()
 		require.NoError(t, err)
-		require.Equal(t, "--req-array\n--req-bool\n--req-enum\n--req-string\n", io.Stdout.String())
+		require.Equal(t, "--req-array\n--req-bool\n--req-enum\n--req-enum-array\n--req-string\n", io.Stdout.String())
 	})
 
 	t.Run("ListFlagsAfterArg", func(t *testing.T) {
@@ -72,7 +72,7 @@ func TestCompletion(t *testing.T) {
 		io := fakeIO(i)
 		err := i.Run()
 		require.NoError(t, err)
-		require.Equal(t, "--req-array\n--req-enum\n", io.Stdout.String())
+		require.Equal(t, "--req-array\n--req-enum\n--req-enum-array\n", io.Stdout.String())
 	})
 
 	t.Run("FlagShorthand", func(t *testing.T) {
@@ -82,7 +82,7 @@ func TestCompletion(t *testing.T) {
 		io := fakeIO(i)
 		err := i.Run()
 		require.NoError(t, err)
-		require.Equal(t, "--req-array\n--req-enum\n", io.Stdout.String())
+		require.Equal(t, "--req-array\n--req-enum\n--req-enum-array\n", io.Stdout.String())
 	})
 
 	t.Run("NoOptDefValueFlag", func(t *testing.T) {
@@ -123,6 +123,36 @@ func TestCompletion(t *testing.T) {
 		err := i.Run()
 		require.NoError(t, err)
 		require.Equal(t, "--req-enum=foo\n--req-enum=bar\n--req-enum=qux\n", io.Stdout.String())
+	})
+
+	t.Run("EnumArrayOK", func(t *testing.T) {
+		t.Parallel()
+		i := cmd().Invoke("required-flag", "--req-enum-array", "")
+		i.Environ.Set(serpent.CompletionModeEnv, "1")
+		io := fakeIO(i)
+		err := i.Run()
+		require.NoError(t, err)
+		require.Equal(t, "foo\nbar\nqux\n", io.Stdout.String())
+	})
+
+	t.Run("EnumArrayEqualsOK", func(t *testing.T) {
+		t.Parallel()
+		i := cmd().Invoke("required-flag", "--req-enum-array=")
+		i.Environ.Set(serpent.CompletionModeEnv, "1")
+		io := fakeIO(i)
+		err := i.Run()
+		require.NoError(t, err)
+		require.Equal(t, "--req-enum-array=foo\n--req-enum-array=bar\n--req-enum-array=qux\n", io.Stdout.String())
+	})
+
+	t.Run("EnumArrayEqualsBeginQuotesOK", func(t *testing.T) {
+		t.Parallel()
+		i := cmd().Invoke("required-flag", "--req-enum-array=\"")
+		i.Environ.Set(serpent.CompletionModeEnv, "1")
+		io := fakeIO(i)
+		err := i.Run()
+		require.NoError(t, err)
+		require.Equal(t, "--req-enum-array=foo\n--req-enum-array=bar\n--req-enum-array=qux\n", io.Stdout.String())
 	})
 
 }

@@ -628,3 +628,51 @@ func (p *YAMLConfigPath) String() string {
 func (*YAMLConfigPath) Type() string {
 	return "yaml-config-path"
 }
+
+var _ pflag.Value = (*EnumArray)(nil)
+
+type EnumArray struct {
+	Choices []string
+	Value   *[]string
+}
+
+func (e *EnumArray) Set(v string) error {
+	if v == "" {
+		*e.Value = nil
+		return nil
+	}
+	ss, err := readAsCSV(v)
+	if err != nil {
+		return err
+	}
+	for _, s := range ss {
+		found := false
+		for _, c := range e.Choices {
+			if s == c {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return xerrors.Errorf("invalid choice: %s, should be one of %v", s, e.Choices)
+		}
+	}
+	*e.Value = append(*e.Value, ss...)
+	return nil
+}
+
+func (e *EnumArray) String() string {
+	return writeAsCSV(*e.Value)
+}
+
+func (e *EnumArray) Type() string {
+	return fmt.Sprintf("enum-array[%v]", strings.Join(e.Choices, "\\|"))
+}
+
+func EnumArrayOf(v *[]string, choices ...string) *EnumArray {
+	choices = append([]string{}, choices...)
+	return &EnumArray{
+		Choices: choices,
+		Value:   v,
+	}
+}

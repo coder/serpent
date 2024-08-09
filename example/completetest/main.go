@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -11,24 +12,21 @@ import (
 // installCommand returns a serpent command that helps
 // a user configure their shell to use serpent's completion.
 func installCommand() *serpent.Command {
-	defaultShell, err := completion.DetectUserShell()
-	if err != nil {
-		defaultShell = "bash"
-	}
-
 	var shell string
 	return &serpent.Command{
-		Use:   "completion",
+		Use:   "completion [--shell <shell>]",
 		Short: "Generate completion scripts for the given shell.",
 		Handler: func(inv *serpent.Invocation) error {
-			completion.WriteCompletion(inv.Stdout, shell, inv.Command.Parent.Name())
-			return nil
+			defaultShell, err := completion.DetectUserShell(inv.Command.Parent.Name())
+			if err != nil {
+				return fmt.Errorf("Could not detect user shell, please specify a shell using `--shell`")
+			}
+			return defaultShell.WriteCompletion(inv.Stdout)
 		},
 		Options: serpent.OptionSet{
 			{
 				Flag:          "shell",
 				FlagShorthand: "s",
-				Default:       defaultShell,
 				Description:   "The shell to generate a completion script for.",
 				Value:         completion.ShellOptions(&shell),
 			},
@@ -42,6 +40,7 @@ func main() {
 		upper    bool
 		fileType string
 		fileArr  []string
+		types    []string
 	)
 	cmd := serpent.Command{
 		Use:   "completetest <text>",
@@ -108,6 +107,11 @@ func main() {
 						Flag:        "extra",
 						Description: "Extra files.",
 						Value:       serpent.StringArrayOf(&fileArr),
+					},
+					{
+						Name:  "types",
+						Flag:  "types",
+						Value: serpent.EnumArrayOf(&types, "binary", "text"),
 					},
 				},
 				CompletionHandler: completion.FileHandler(nil),

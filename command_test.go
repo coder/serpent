@@ -34,14 +34,15 @@ func fakeIO(i *serpent.Invocation) *ioBufs {
 func sampleCommand(t *testing.T) *serpent.Command {
 	t.Helper()
 	var (
-		verbose bool
-		lower   bool
-		prefix  string
-		reqBool bool
-		reqStr  string
-		reqArr  []string
-		fileArr []string
-		enumStr string
+		verbose    bool
+		lower      bool
+		prefix     string
+		reqBool    bool
+		reqStr     string
+		reqArr     []string
+		reqEnumArr []string
+		fileArr    []string
+		enumStr    string
 	)
 	enumChoices := []string{"foo", "bar", "qux"}
 	return &serpent.Command{
@@ -93,6 +94,11 @@ func sampleCommand(t *testing.T) *serpent.Command {
 						Flag:          "req-array",
 						FlagShorthand: "a",
 						Value:         serpent.StringArrayOf(&reqArr),
+					},
+					serpent.Option{
+						Name:  "req-enum-array",
+						Flag:  "req-enum-array",
+						Value: serpent.EnumArrayOf(&reqEnumArr, enumChoices...),
 					},
 				},
 				HelpHandler: func(i *serpent.Invocation) error {
