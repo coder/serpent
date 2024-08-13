@@ -18,11 +18,6 @@ func Fish(goos string, programName string) Shell {
 	return &fish{goos: goos, programName: programName}
 }
 
-// UsesOwnFile implements Shell.
-func (f *fish) UsesOwnFile() bool {
-	return true
-}
-
 // Name implements Shell.
 func (f *fish) Name() string {
 	return "fish"
@@ -39,7 +34,12 @@ func (f *fish) InstallPath() (string, error) {
 
 // WriteCompletion implements Shell.
 func (f *fish) WriteCompletion(w io.Writer) error {
-	return generateCompletion(fishCompletionTemplate)(w, f.programName)
+	return configTemplateWriter(w, fishCompletionTemplate, f.programName)
+}
+
+// ProgramName implements Shell.
+func (f *fish) ProgramName() string {
+	return f.programName
 }
 
 const fishCompletionTemplate = `

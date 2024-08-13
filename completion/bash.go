@@ -23,11 +23,6 @@ func (b *bash) Name() string {
 	return "bash"
 }
 
-// UsesOwnFile implements Shell.
-func (b *bash) UsesOwnFile() bool {
-	return false
-}
-
 // InstallPath implements Shell.
 func (b *bash) InstallPath() (string, error) {
 	homeDir, err := home.Dir()
@@ -42,12 +37,15 @@ func (b *bash) InstallPath() (string, error) {
 
 // WriteCompletion implements Shell.
 func (b *bash) WriteCompletion(w io.Writer) error {
-	return generateCompletion(bashCompletionTemplate)(w, b.programName)
+	return configTemplateWriter(w, bashCompletionTemplate, b.programName)
+}
+
+// ProgramName implements Shell.
+func (b *bash) ProgramName() string {
+	return b.programName
 }
 
 const bashCompletionTemplate = `
-
-# === BEGIN {{.Name}} COMPLETION ===
 _generate_{{.Name}}_completions() {
     # Capture the line excluding the command, and everything after the current word
     local args=("${COMP_WORDS[@]:1:COMP_CWORD}")
@@ -65,6 +63,4 @@ _generate_{{.Name}}_completions() {
 }
 # Setup Bash to use the function for completions for '{{.Name}}'
 complete -F _generate_{{.Name}}_completions {{.Name}}
-# === END {{.Name}} COMPLETION ===
-
 `

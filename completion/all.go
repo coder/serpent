@@ -1,8 +1,11 @@
 package completion
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -13,11 +16,16 @@ import (
 	"github.com/coder/serpent"
 )
 
+const (
+	completionStartTemplate = `# ============ BEGIN {{.Name}} COMPLETION ============`
+	completionEndTemplate   = `# ============ END {{.Name}} COMPLETION ==============`
+)
+
 type Shell interface {
 	Name() string
 	InstallPath() (string, error)
-	UsesOwnFile() bool
 	WriteCompletion(io.Writer) error
+	ProgramName() string
 }
 
 const (
@@ -77,27 +85,27 @@ func DetectUserShell(programName string) (Shell, error) {
 	return nil, fmt.Errorf("default shell not found")
 }
 
-func generateCompletion(
-	scriptTemplate string,
-) func(io.Writer, string) error {
-	return func(w io.Writer, programName string) error {
-		tmpl, err := template.New("script").Parse(scriptTemplate)
-		if err != nil {
-			return fmt.Errorf("parse template: %w", err)
-		}
-
-		err = tmpl.Execute(
-			w,
-			map[string]string{
-				"Name": programName,
-			},
-		)
-		if err != nil {
-			return fmt.Errorf("execute template: %w", err)
-		}
-
-		return nil
+func configTemplateWriter(
+	w io.Writer,
+	cfgTemplate string,
+	programName string,
+) error {
+	tmpl, err := template.New("script").Parse(cfgTemplate)
+	if err != nil {
+		return fmt.Errorf("parse template: %w", err)
 	}
+
+	err = tmpl.Execute(
+		w,
+		map[string]string{
+			"Name": programName,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("execute template: %w", err)
+	}
+
+	return nil
 }
 
 func InstallShellCompletion(shell Shell) error {
@@ -105,28 +113,126 @@ func InstallShellCompletion(shell Shell) error {
 	if err != nil {
 		return fmt.Errorf("get install path: %w", err)
 	}
+	var headerBuf bytes.Buffer
+	err = configTemplateWriter(&headerBuf, completionStartTemplate, shell.ProgramName())
+	if err != nil {
+		return fmt.Errorf("generate header: %w", err)
+	}
+
+	var footerBytes bytes.Buffer
+	err = configTemplateWriter(&footerBytes, completionEndTemplate, shell.ProgramName())
+	if err != nil {
+		return fmt.Errorf("generate footer: %w", err)
+	}
 
 	err = os.MkdirAll(filepath.Dir(path), 0o755)
 	if err != nil {
 		return fmt.Errorf("create directories: %w", err)
 	}
 
-	if shell.UsesOwnFile() {
-		err := os.WriteFile(path, nil, 0o644)
-		if err != nil {
-			return fmt.Errorf("create file: %w", err)
+	f, err := os.ReadFile(path)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("read ssh config failed: %w", err)
+	}
+
+	before, after, err := templateConfigSplit(headerBuf.Bytes(), footerBytes.Bytes(), f)
+	if err != nil {
+		return err
+	}
+
+	outBuf := bytes.Buffer{}
+	_, _ = outBuf.Write(before)
+	if len(before) > 0 {
+		_, _ = outBuf.Write([]byte("\n"))
+	}
+	_, _ = outBuf.Write(headerBuf.Bytes())
+	err = shell.WriteCompletion(&outBuf)
+	if err != nil {
+		return fmt.Errorf("generate completion: %w", err)
+	}
+	_, _ = outBuf.Write(footerBytes.Bytes())
+	_, _ = outBuf.Write([]byte("\n"))
+	_, _ = outBuf.Write(after)
+
+	err = writeWithTempFileAndMove(path, &outBuf)
+	if err != nil {
+		return fmt.Errorf("write completion: %w", err)
+	}
+
+	return nil
+}
+
+func templateConfigSplit(header, footer, data []byte) (before, after []byte, err error) {
+	startCount := bytes.Count(data, header)
+	endCount := bytes.Count(data, footer)
+	if startCount > 1 || endCount > 1 {
+		return nil, nil, fmt.Errorf("Malformed config file: multiple config sections")
+	}
+
+	startIndex := bytes.Index(data, header)
+	endIndex := bytes.Index(data, footer)
+	if startIndex == -1 && endIndex != -1 {
+		return data, nil, fmt.Errorf("Malformed config file: missing completion header")
+	}
+	if startIndex != -1 && endIndex == -1 {
+		return data, nil, fmt.Errorf("Malformed config file: missing completion footer")
+	}
+	if startIndex != -1 && endIndex != -1 {
+		if startIndex > endIndex {
+			return data, nil, fmt.Errorf("Malformed config file: completion header after footer")
 		}
+		// Include leading and trailing newline, if present
+		start := startIndex
+		if start > 0 {
+			start--
+		}
+		end := endIndex + len(footer)
+		if end < len(data) {
+			end++
+		}
+		return data[:start], data[end:], nil
+	}
+	return data, nil, nil
+}
+
+// writeWithTempFileAndMove writes to a temporary file in the same
+// directory as path and renames the temp file to the file provided in
+// path. This ensure we avoid trashing the file we are writing due to
+// unforeseen circumstance like filesystem full, command killed, etc.
+func writeWithTempFileAndMove(path string, r io.Reader) (err error) {
+	dir := filepath.Dir(path)
+	name := filepath.Base(path)
+
+	if err = os.MkdirAll(dir, 0o700); err != nil {
+		return fmt.Errorf("create directory: %w", err)
 	}
 
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	// Create a tempfile in the same directory for ensuring write
+	// operation does not fail.
+	f, err := os.CreateTemp(dir, fmt.Sprintf(".%s.", name))
 	if err != nil {
-		return fmt.Errorf("open file for appending: %w", err)
+		return fmt.Errorf("create temp file failed: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		if err != nil {
+			_ = os.Remove(f.Name()) // Cleanup in case a step failed.
+		}
+	}()
 
-	err = shell.WriteCompletion(f)
+	_, err = io.Copy(f, r)
 	if err != nil {
-		return fmt.Errorf("write completion script: %w", err)
+		_ = f.Close()
+		return fmt.Errorf("write temp file failed: %w", err)
+	}
+
+	err = f.Close()
+	if err != nil {
+		return fmt.Errorf("close temp file failed: %w", err)
+	}
+
+	err = os.Rename(f.Name(), path)
+	if err != nil {
+		return fmt.Errorf("rename temp file failed: %w", err)
 	}
 
 	return nil

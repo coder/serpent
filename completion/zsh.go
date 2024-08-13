@@ -23,11 +23,6 @@ func (z *zsh) Name() string {
 	return "zsh"
 }
 
-// UsesOwnFile implements Shell.
-func (z *zsh) UsesOwnFile() bool {
-	return false
-}
-
 // InstallPath implements Shell.
 func (z *zsh) InstallPath() (string, error) {
 	homeDir, err := home.Dir()
@@ -39,12 +34,15 @@ func (z *zsh) InstallPath() (string, error) {
 
 // WriteCompletion implements Shell.
 func (z *zsh) WriteCompletion(w io.Writer) error {
-	return generateCompletion(zshCompletionTemplate)(w, z.programName)
+	return configTemplateWriter(w, zshCompletionTemplate, z.programName)
+}
+
+// ProgramName implements Shell.
+func (z *zsh) ProgramName() string {
+	return z.programName
 }
 
 const zshCompletionTemplate = `
-
-# === BEGIN {{.Name}} COMPLETION ===
 _{{.Name}}_completions() {
 	local -a args completions
 	args=("${words[@]:1:$#words}")
@@ -52,6 +50,4 @@ _{{.Name}}_completions() {
 	compadd -a completions
 }
 compdef _{{.Name}}_completions {{.Name}}
-# === END {{.Name}} COMPLETION ===
-
 `

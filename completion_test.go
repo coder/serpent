@@ -238,42 +238,92 @@ func TestFileCompletion(t *testing.T) {
 func TestCompletionInstall(t *testing.T) {
 	t.Parallel()
 
-	t.Run("InstallingAppend", func(t *testing.T) {
+	t.Run("InstallingNew", func(t *testing.T) {
 		dir := t.TempDir()
 		path := filepath.Join(dir, "fake.sh")
-		f, err := os.Create(path)
-		require.NoError(t, err)
-		f.Write([]byte("FAKE_SCRIPT"))
-		f.Close()
+		shell := &fakeShell{baseInstallDir: dir, programName: "fake"}
 
-		shell := &fakeShell{baseInstallDir: dir, useOwn: false}
-		err = completion.InstallShellCompletion(shell)
+		err := completion.InstallShellCompletion(shell)
 		require.NoError(t, err)
 		contents, err := os.ReadFile(path)
 		require.NoError(t, err)
-		require.Equal(t, "FAKE_SCRIPTFAKE_COMPLETION", string(contents))
+		require.Equal(t, "# ============ BEGIN fake COMPLETION ============\nFAKE_COMPLETION\n# ============ END fake COMPLETION ==============\n", string(contents))
 	})
 
-	t.Run("InstallReplace", func(t *testing.T) {
-		dir := t.TempDir()
-		path := filepath.Join(dir, "fake.sh")
-		f, err := os.Create(path)
-		require.NoError(t, err)
-		f.Write([]byte("FAKE_SCRIPT"))
-		f.Close()
+	cases := []struct {
+		name     string
+		input    []byte
+		expected []byte
+		errMsg   string
+	}{
+		{
+			name:     "InstallingAppend",
+			input:    []byte("FAKE_SCRIPT"),
+			expected: []byte("FAKE_SCRIPT\n# ============ BEGIN fake COMPLETION ============\nFAKE_COMPLETION\n# ============ END fake COMPLETION ==============\n"),
+		},
+		{
+			name:     "InstallReplaceBeginning",
+			input:    []byte("# ============ BEGIN fake COMPLETION ============\nOLD_COMPLETION\n# ============ END fake COMPLETION ==============\nFAKE_SCRIPT\n"),
+			expected: []byte("# ============ BEGIN fake COMPLETION ============\nFAKE_COMPLETION\n# ============ END fake COMPLETION ==============\nFAKE_SCRIPT\n"),
+		},
+		{
+			name:     "InstallReplaceMiddle",
+			input:    []byte("FAKE_SCRIPT\n# ============ BEGIN fake COMPLETION ============\nOLD_COMPLETION\n# ============ END fake COMPLETION ==============\nFAKE_SCRIPT\n"),
+			expected: []byte("FAKE_SCRIPT\n# ============ BEGIN fake COMPLETION ============\nFAKE_COMPLETION\n# ============ END fake COMPLETION ==============\nFAKE_SCRIPT\n"),
+		},
+		{
+			name:     "InstallReplaceEnd",
+			input:    []byte("FAKE_SCRIPT\n# ============ BEGIN fake COMPLETION ============\nOLD_COMPLETION\n# ============ END fake COMPLETION ==============\n"),
+			expected: []byte("FAKE_SCRIPT\n# ============ BEGIN fake COMPLETION ============\nFAKE_COMPLETION\n# ============ END fake COMPLETION ==============\n"),
+		},
+		{
+			name:   "InstallNoFooter",
+			input:  []byte("FAKE_SCRIPT\n# ============ BEGIN fake COMPLETION ============\nOLD_COMPLETION\n"),
+			errMsg: "missing completion footer",
+		},
+		{
+			name:   "InstallNoHeader",
+			input:  []byte("OLD_COMPLETION\n# ============ END fake COMPLETION ==============\n"),
+			errMsg: "missing completion header",
+		},
+		{
+			name:   "InstallBadOrder",
+			input:  []byte("# ============ END fake COMPLETION ==============\nFAKE_COMPLETION\n# ============ BEGIN fake COMPLETION =============="),
+			errMsg: "header after footer",
+		},
+	}
 
-		shell := &fakeShell{baseInstallDir: dir, useOwn: true}
-		err = completion.InstallShellCompletion(shell)
-		require.NoError(t, err)
-		contents, err := os.ReadFile(path)
-		require.NoError(t, err)
-		require.Equal(t, "FAKE_COMPLETION", string(contents))
-	})
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "fake.sh")
+			err := os.WriteFile(path, tc.input, 0o644)
+			require.NoError(t, err)
+
+			shell := &fakeShell{baseInstallDir: dir, programName: "fake"}
+			err = completion.InstallShellCompletion(shell)
+			if tc.errMsg != "" {
+				require.ErrorContains(t, err, tc.errMsg)
+				return
+			} else {
+				require.NoError(t, err)
+				contents, err := os.ReadFile(path)
+				require.NoError(t, err)
+				require.Equal(t, tc.expected, contents)
+			}
+		})
+	}
 }
 
 type fakeShell struct {
 	baseInstallDir string
-	useOwn         bool
+	programName    string
+}
+
+// ProgramName implements completion.Shell.
+func (f *fakeShell) ProgramName() string {
+	return f.programName
 }
 
 var _ completion.Shell = &fakeShell{}
@@ -285,16 +335,11 @@ func (f *fakeShell) InstallPath() (string, error) {
 
 // Name implements completion.Shell.
 func (f *fakeShell) Name() string {
-	return "fake"
-}
-
-// UsesOwnFile implements completion.Shell.
-func (f *fakeShell) UsesOwnFile() bool {
-	return f.useOwn
+	return "Fake"
 }
 
 // WriteCompletion implements completion.Shell.
 func (f *fakeShell) WriteCompletion(w io.Writer) error {
-	_, err := w.Write([]byte("FAKE_COMPLETION"))
+	_, err := w.Write([]byte("\nFAKE_COMPLETION\n"))
 	return err
 }

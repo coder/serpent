@@ -191,7 +191,10 @@ func (String) Type() string {
 	return "string"
 }
 
-var _ pflag.SliceValue = &StringArray{}
+var (
+	_ pflag.SliceValue = &StringArray{}
+	_ pflag.Value      = &StringArray{}
+)
 
 // StringArray is a slice of strings that implements pflag.Value and pflag.SliceValue.
 type StringArray []string
@@ -629,6 +632,7 @@ func (*YAMLConfigPath) Type() string {
 	return "yaml-config-path"
 }
 
+var _ pflag.SliceValue = (*EnumArray)(nil)
 var _ pflag.Value = (*EnumArray)(nil)
 
 type EnumArray struct {
@@ -636,15 +640,22 @@ type EnumArray struct {
 	Value   *[]string
 }
 
-func (e *EnumArray) Set(v string) error {
-	if v == "" {
-		*e.Value = nil
-		return nil
+// Append implements pflag.SliceValue.
+func (e *EnumArray) Append(s string) error {
+	for _, c := range e.Choices {
+		if s == c {
+			*e.Value = append(*e.Value, s)
+			return nil
+		}
 	}
-	ss, err := readAsCSV(v)
-	if err != nil {
-		return err
-	}
+	return xerrors.Errorf("invalid choice: %s, should be one of %v", s, e.Choices)
+}
+
+func (e *EnumArray) GetSlice() []string {
+	return *e.Value
+}
+
+func (e *EnumArray) Replace(ss []string) error {
 	for _, s := range ss {
 		found := false
 		for _, c := range e.Choices {
@@ -656,6 +667,23 @@ func (e *EnumArray) Set(v string) error {
 		if !found {
 			return xerrors.Errorf("invalid choice: %s, should be one of %v", s, e.Choices)
 		}
+	}
+	*e.Value = ss
+	return nil
+}
+
+func (e *EnumArray) Set(v string) error {
+	if v == "" {
+		*e.Value = nil
+		return nil
+	}
+	ss, err := readAsCSV(v)
+	if err != nil {
+		return err
+	}
+	err = e.Replace(ss)
+	if err != nil {
+		return err
 	}
 	*e.Value = append(*e.Value, ss...)
 	return nil
