@@ -13,7 +13,6 @@ type powershell struct {
 
 var _ Shell = &powershell{}
 
-// Name implements Shell.
 func (p *powershell) Name() string {
 	return "powershell"
 }
@@ -22,7 +21,6 @@ func Powershell(goos string, programName string) Shell {
 	return &powershell{goos: goos, programName: programName}
 }
 
-// InstallPath implements Shell.
 func (p *powershell) InstallPath() (string, error) {
 	var (
 		path []byte
@@ -40,12 +38,10 @@ func (p *powershell) InstallPath() (string, error) {
 	return strings.TrimSpace(string(path)), nil
 }
 
-// WriteCompletion implements Shell.
 func (p *powershell) WriteCompletion(w io.Writer) error {
-	return configTemplateWriter(w, pshCompletionTemplate, p.programName)
+	return writeConfig(w, pshCompletionTemplate, p.programName)
 }
 
-// ProgramName implements Shell.
 func (p *powershell) ProgramName() string {
 	return p.programName
 }

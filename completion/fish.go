@@ -18,12 +18,10 @@ func Fish(goos string, programName string) Shell {
 	return &fish{goos: goos, programName: programName}
 }
 
-// Name implements Shell.
 func (f *fish) Name() string {
 	return "fish"
 }
 
-// InstallPath implements Shell.
 func (f *fish) InstallPath() (string, error) {
 	homeDir, err := home.Dir()
 	if err != nil {
@@ -32,12 +30,10 @@ func (f *fish) InstallPath() (string, error) {
 	return filepath.Join(homeDir, ".config/fish/completions/", f.programName+".fish"), nil
 }
 
-// WriteCompletion implements Shell.
 func (f *fish) WriteCompletion(w io.Writer) error {
-	return configTemplateWriter(w, fishCompletionTemplate, f.programName)
+	return writeConfig(w, fishCompletionTemplate, f.programName)
 }
 
-// ProgramName implements Shell.
 func (f *fish) ProgramName() string {
 	return f.programName
 }

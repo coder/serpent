@@ -18,12 +18,10 @@ func Bash(goos string, programName string) Shell {
 	return &bash{goos: goos, programName: programName}
 }
 
-// Name implements Shell.
 func (b *bash) Name() string {
 	return "bash"
 }
 
-// InstallPath implements Shell.
 func (b *bash) InstallPath() (string, error) {
 	homeDir, err := home.Dir()
 	if err != nil {
@@ -35,12 +33,10 @@ func (b *bash) InstallPath() (string, error) {
 	return filepath.Join(homeDir, ".bashrc"), nil
 }
 
-// WriteCompletion implements Shell.
 func (b *bash) WriteCompletion(w io.Writer) error {
-	return configTemplateWriter(w, bashCompletionTemplate, b.programName)
+	return writeConfig(w, bashCompletionTemplate, b.programName)
 }
 
-// ProgramName implements Shell.
 func (b *bash) ProgramName() string {
 	return b.programName
 }

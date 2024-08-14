@@ -321,24 +321,20 @@ type fakeShell struct {
 	programName    string
 }
 
-// ProgramName implements completion.Shell.
 func (f *fakeShell) ProgramName() string {
 	return f.programName
 }
 
 var _ completion.Shell = &fakeShell{}
 
-// InstallPath implements completion.Shell.
 func (f *fakeShell) InstallPath() (string, error) {
 	return filepath.Join(f.baseInstallDir, "fake.sh"), nil
 }
 
-// Name implements completion.Shell.
 func (f *fakeShell) Name() string {
 	return "Fake"
 }
 
-// WriteCompletion implements completion.Shell.
 func (f *fakeShell) WriteCompletion(w io.Writer) error {
 	_, err := w.Write([]byte("\nFAKE_COMPLETION\n"))
 	return err

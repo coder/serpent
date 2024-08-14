@@ -18,12 +18,10 @@ func Zsh(goos string, programName string) Shell {
 	return &zsh{goos: goos, programName: programName}
 }
 
-// Name implements Shell.
 func (z *zsh) Name() string {
 	return "zsh"
 }
 
-// InstallPath implements Shell.
 func (z *zsh) InstallPath() (string, error) {
 	homeDir, err := home.Dir()
 	if err != nil {
@@ -32,12 +30,10 @@ func (z *zsh) InstallPath() (string, error) {
 	return filepath.Join(homeDir, ".zshrc"), nil
 }
 
-// WriteCompletion implements Shell.
 func (z *zsh) WriteCompletion(w io.Writer) error {
-	return configTemplateWriter(w, zshCompletionTemplate, z.programName)
+	return writeConfig(w, zshCompletionTemplate, z.programName)
 }
 
-// ProgramName implements Shell.
 func (z *zsh) ProgramName() string {
 	return z.programName
 }

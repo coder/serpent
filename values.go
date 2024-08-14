@@ -640,7 +640,6 @@ type EnumArray struct {
 	Value   *[]string
 }
 
-// Append implements pflag.SliceValue.
 func (e *EnumArray) Append(s string) error {
 	for _, c := range e.Choices {
 		if s == c {

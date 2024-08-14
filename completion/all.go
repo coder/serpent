@@ -14,6 +14,8 @@ import (
 	"text/template"
 
 	"github.com/coder/serpent"
+
+	"github.com/natefinch/atomic"
 )
 
 const (
@@ -85,7 +87,7 @@ func DetectUserShell(programName string) (Shell, error) {
 	return nil, fmt.Errorf("default shell not found")
 }
 
-func configTemplateWriter(
+func writeConfig(
 	w io.Writer,
 	cfgTemplate string,
 	programName string,
@@ -114,13 +116,13 @@ func InstallShellCompletion(shell Shell) error {
 		return fmt.Errorf("get install path: %w", err)
 	}
 	var headerBuf bytes.Buffer
-	err = configTemplateWriter(&headerBuf, completionStartTemplate, shell.ProgramName())
+	err = writeConfig(&headerBuf, completionStartTemplate, shell.ProgramName())
 	if err != nil {
 		return fmt.Errorf("generate header: %w", err)
 	}
 
 	var footerBytes bytes.Buffer
-	err = configTemplateWriter(&footerBytes, completionEndTemplate, shell.ProgramName())
+	err = writeConfig(&footerBytes, completionEndTemplate, shell.ProgramName())
 	if err != nil {
 		return fmt.Errorf("generate footer: %w", err)
 	}
@@ -154,7 +156,7 @@ func InstallShellCompletion(shell Shell) error {
 	_, _ = outBuf.Write([]byte("\n"))
 	_, _ = outBuf.Write(after)
 
-	err = writeWithTempFileAndMove(path, &outBuf)
+	err = atomic.WriteFile(path, &outBuf)
 	if err != nil {
 		return fmt.Errorf("write completion: %w", err)
 	}
@@ -193,47 +195,4 @@ func templateConfigSplit(header, footer, data []byte) (before, after []byte, err
 		return data[:start], data[end:], nil
 	}
 	return data, nil, nil
-}
-
-// writeWithTempFileAndMove writes to a temporary file in the same
-// directory as path and renames the temp file to the file provided in
-// path. This ensure we avoid trashing the file we are writing due to
-// unforeseen circumstance like filesystem full, command killed, etc.
-func writeWithTempFileAndMove(path string, r io.Reader) (err error) {
-	dir := filepath.Dir(path)
-	name := filepath.Base(path)
-
-	if err = os.MkdirAll(dir, 0o700); err != nil {
-		return fmt.Errorf("create directory: %w", err)
-	}
-
-	// Create a tempfile in the same directory for ensuring write
-	// operation does not fail.
-	f, err := os.CreateTemp(dir, fmt.Sprintf(".%s.", name))
-	if err != nil {
-		return fmt.Errorf("create temp file failed: %w", err)
-	}
-	defer func() {
-		if err != nil {
-			_ = os.Remove(f.Name()) // Cleanup in case a step failed.
-		}
-	}()
-
-	_, err = io.Copy(f, r)
-	if err != nil {
-		_ = f.Close()
-		return fmt.Errorf("write temp file failed: %w", err)
-	}
-
-	err = f.Close()
-	if err != nil {
-		return fmt.Errorf("close temp file failed: %w", err)
-	}
-
-	err = os.Rename(f.Name(), path)
-	if err != nil {
-		return fmt.Errorf("rename temp file failed: %w", err)
-	}
-
-	return nil
 }
