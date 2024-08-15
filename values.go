@@ -191,7 +191,10 @@ func (String) Type() string {
 	return "string"
 }
 
-var _ pflag.SliceValue = &StringArray{}
+var (
+	_ pflag.SliceValue = &StringArray{}
+	_ pflag.Value      = &StringArray{}
+)
 
 // StringArray is a slice of strings that implements pflag.Value and pflag.SliceValue.
 type StringArray []string
@@ -527,7 +530,7 @@ func EnumOf(v *string, choices ...string) *Enum {
 
 func (e *Enum) Set(v string) error {
 	for _, c := range e.Choices {
-		if v == c {
+		if strings.EqualFold(v, c) {
 			*e.Value = v
 			return nil
 		}
@@ -627,4 +630,77 @@ func (p *YAMLConfigPath) String() string {
 
 func (*YAMLConfigPath) Type() string {
 	return "yaml-config-path"
+}
+
+var _ pflag.SliceValue = (*EnumArray)(nil)
+var _ pflag.Value = (*EnumArray)(nil)
+
+type EnumArray struct {
+	Choices []string
+	Value   *[]string
+}
+
+func (e *EnumArray) Append(s string) error {
+	for _, c := range e.Choices {
+		if strings.EqualFold(s, c) {
+			*e.Value = append(*e.Value, s)
+			return nil
+		}
+	}
+	return xerrors.Errorf("invalid choice: %s, should be one of %v", s, e.Choices)
+}
+
+func (e *EnumArray) GetSlice() []string {
+	return *e.Value
+}
+
+func (e *EnumArray) Replace(ss []string) error {
+	for _, s := range ss {
+		found := false
+		for _, c := range e.Choices {
+			if strings.EqualFold(s, c) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return xerrors.Errorf("invalid choice: %s, should be one of %v", s, e.Choices)
+		}
+	}
+	*e.Value = ss
+	return nil
+}
+
+func (e *EnumArray) Set(v string) error {
+	if v == "" {
+		*e.Value = nil
+		return nil
+	}
+	ss, err := readAsCSV(v)
+	if err != nil {
+		return err
+	}
+	for _, s := range ss {
+		err := e.Append(s)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (e *EnumArray) String() string {
+	return writeAsCSV(*e.Value)
+}
+
+func (e *EnumArray) Type() string {
+	return fmt.Sprintf("enum-array[%v]", strings.Join(e.Choices, "\\|"))
+}
+
+func EnumArrayOf(v *[]string, choices ...string) *EnumArray {
+	choices = append([]string{}, choices...)
+	return &EnumArray{
+		Choices: choices,
+		Value:   v,
+	}
 }

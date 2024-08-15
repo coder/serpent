@@ -1,22 +1,62 @@
 package completion
 
-const bashCompletionTemplate = `
-_generate_{{.Name}}_completions() {
-    # Capture the line excluding the command, and everything after the current word
-    local args=("${COMP_WORDS[@]:1:COMP_CWORD}")
+import (
+	"io"
+	"path/filepath"
 
-    # Set COMPLETION_MODE and call the command with the arguments, capturing the output
-    local completions=$(COMPLETION_MODE=1 "{{.Name}}" "${args[@]}")
+	home "github.com/mitchellh/go-homedir"
+)
 
-    # Use the command's output to generate completions for the current word
-    COMPREPLY=($(compgen -W "$completions" -- "${COMP_WORDS[COMP_CWORD]}"))
-
-    # Ensure no files are shown, even if there are no matches
-    if [ ${#COMPREPLY[@]} -eq 0 ]; then
-        COMPREPLY=()
-    fi
+type bash struct {
+	goos        string
+	programName string
 }
 
+var _ Shell = &bash{}
+
+func Bash(goos string, programName string) Shell {
+	return &bash{goos: goos, programName: programName}
+}
+
+func (b *bash) Name() string {
+	return "bash"
+}
+
+func (b *bash) InstallPath() (string, error) {
+	homeDir, err := home.Dir()
+	if err != nil {
+		return "", err
+	}
+	if b.goos == "darwin" {
+		return filepath.Join(homeDir, ".bash_profile"), nil
+	}
+	return filepath.Join(homeDir, ".bashrc"), nil
+}
+
+func (b *bash) WriteCompletion(w io.Writer) error {
+	return writeConfig(w, bashCompletionTemplate, b.programName)
+}
+
+func (b *bash) ProgramName() string {
+	return b.programName
+}
+
+const bashCompletionTemplate = `
+_generate_{{.Name}}_completions() {
+    local args=("${COMP_WORDS[@]:1:COMP_CWORD}")
+
+    declare -a output
+    mapfile -t output < <(COMPLETION_MODE=1 "{{.Name}}" "${args[@]}")
+
+    declare -a completions
+    mapfile -t completions < <( compgen -W "$(printf '%q ' "${output[@]}")" -- "$2" )
+
+    local comp
+    COMPREPLY=()
+    for comp in "${completions[@]}"; do
+        COMPREPLY+=("$(printf "%q" "$comp")")
+    done
+}
 # Setup Bash to use the function for completions for '{{.Name}}'
 complete -F _generate_{{.Name}}_completions {{.Name}}
 `

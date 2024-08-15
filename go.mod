@@ -6,8 +6,10 @@ require (
 	cdr.dev/slog v1.6.2-0.20240126064726-20367d4aede6
 	github.com/coder/pretty v0.0.0-20230908205945-e89ba86370e0
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/muesli/termenv v0.15.2
+	github.com/natefinch/atomic v1.0.1
 	github.com/pion/udp v0.1.4
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4

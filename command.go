@@ -296,10 +296,16 @@ func copyFlagSetWithout(fs *pflag.FlagSet, without string) *pflag.FlagSet {
 }
 
 func (inv *Invocation) CurWords() (prev string, cur string) {
-	if len(inv.Args) == 1 {
+	switch len(inv.Args) {
+	// All the shells we support will supply at least one argument (empty string),
+	// but we don't want to panic.
+	case 0:
+		cur = ""
+		prev = ""
+	case 1:
 		cur = inv.Args[0]
 		prev = ""
-	} else {
+	default:
 		cur = inv.Args[len(inv.Args)-1]
 		prev = inv.Args[len(inv.Args)-2]
 	}
@@ -645,9 +651,13 @@ func (inv *Invocation) completeFlag(word string) []string {
 	if opt.CompletionHandler != nil {
 		return opt.CompletionHandler(inv)
 	}
-	val, ok := opt.Value.(*Enum)
+	enum, ok := opt.Value.(*Enum)
 	if ok {
-		return val.Choices
+		return enum.Choices
+	}
+	enumArr, ok := opt.Value.(*EnumArray)
+	if ok {
+		return enumArr.Choices
 	}
 	return nil
 }
