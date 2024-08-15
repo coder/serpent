@@ -80,7 +80,7 @@ $_{{.Name}}_completions = {
     Invoke-Expression $Command | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
         "$_" | _{{.Name}}_escapeStringWithSpecialChars
     }
-    rm env:COMPLETION_MODE
+    $env:COMPLETION_MODE = ''
 }
 Register-ArgumentCompleter -CommandName {{.Name}} -ScriptBlock $_{{.Name}}_completions
 `

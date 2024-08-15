@@ -530,7 +530,7 @@ func EnumOf(v *string, choices ...string) *Enum {
 
 func (e *Enum) Set(v string) error {
 	for _, c := range e.Choices {
-		if v == c {
+		if strings.EqualFold(v, c) {
 			*e.Value = v
 			return nil
 		}
@@ -642,7 +642,7 @@ type EnumArray struct {
 
 func (e *EnumArray) Append(s string) error {
 	for _, c := range e.Choices {
-		if s == c {
+		if strings.EqualFold(s, c) {
 			*e.Value = append(*e.Value, s)
 			return nil
 		}
@@ -658,7 +658,7 @@ func (e *EnumArray) Replace(ss []string) error {
 	for _, s := range ss {
 		found := false
 		for _, c := range e.Choices {
-			if s == c {
+			if strings.EqualFold(s, c) {
 				found = true
 				break
 			}
@@ -680,11 +680,12 @@ func (e *EnumArray) Set(v string) error {
 	if err != nil {
 		return err
 	}
-	err = e.Replace(ss)
-	if err != nil {
-		return err
+	for _, s := range ss {
+		err := e.Append(s)
+		if err != nil {
+			return err
+		}
 	}
-	*e.Value = append(*e.Value, ss...)
 	return nil
 }
 
