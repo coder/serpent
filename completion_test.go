@@ -25,7 +25,7 @@ func TestCompletion(t *testing.T) {
 		io := fakeIO(i)
 		err := i.Run()
 		require.NoError(t, err)
-		require.Equal(t, "altfile\nfile\nrequired-flag\ntoupper\n--prefix\n--verbose\n", io.Stdout.String())
+		require.Equal(t, "altfile\nfile\nrequired-flag\ntoupper\n", io.Stdout.String())
 	})
 
 	t.Run("SubcommandNoPartial", func(t *testing.T) {
@@ -35,7 +35,7 @@ func TestCompletion(t *testing.T) {
 		io := fakeIO(i)
 		err := i.Run()
 		require.NoError(t, err)
-		require.Equal(t, "altfile\nfile\nrequired-flag\ntoupper\n--prefix\n--verbose\n", io.Stdout.String())
+		require.Equal(t, "altfile\nfile\nrequired-flag\ntoupper\n", io.Stdout.String())
 	})
 
 	t.Run("SubcommandComplete", func(t *testing.T) {
@@ -50,7 +50,7 @@ func TestCompletion(t *testing.T) {
 
 	t.Run("ListFlags", func(t *testing.T) {
 		t.Parallel()
-		i := cmd().Invoke("required-flag", "")
+		i := cmd().Invoke("required-flag", "-")
 		i.Environ.Set(serpent.CompletionModeEnv, "1")
 		io := fakeIO(i)
 		err := i.Run()
@@ -60,7 +60,7 @@ func TestCompletion(t *testing.T) {
 
 	t.Run("ListFlagsAfterArg", func(t *testing.T) {
 		t.Parallel()
-		i := cmd().Invoke("altfile", "")
+		i := cmd().Invoke("altfile", "-")
 		i.Environ.Set(serpent.CompletionModeEnv, "1")
 		io := fakeIO(i)
 		err := i.Run()
@@ -70,7 +70,7 @@ func TestCompletion(t *testing.T) {
 
 	t.Run("FlagExhaustive", func(t *testing.T) {
 		t.Parallel()
-		i := cmd().Invoke("required-flag", "--req-bool", "--req-string", "foo bar", "--req-array", "asdf", "--req-array", "qwerty")
+		i := cmd().Invoke("required-flag", "--req-bool", "--req-string", "foo bar", "--req-array", "asdf", "--req-array", "qwerty", "-")
 		i.Environ.Set(serpent.CompletionModeEnv, "1")
 		io := fakeIO(i)
 		err := i.Run()
@@ -80,7 +80,7 @@ func TestCompletion(t *testing.T) {
 
 	t.Run("FlagShorthand", func(t *testing.T) {
 		t.Parallel()
-		i := cmd().Invoke("required-flag", "-b", "-s", "foo bar", "-a", "asdf")
+		i := cmd().Invoke("required-flag", "-b", "-s", "foo bar", "-a", "asdf", "-")
 		i.Environ.Set(serpent.CompletionModeEnv, "1")
 		io := fakeIO(i)
 		err := i.Run()
@@ -90,12 +90,12 @@ func TestCompletion(t *testing.T) {
 
 	t.Run("NoOptDefValueFlag", func(t *testing.T) {
 		t.Parallel()
-		i := cmd().Invoke("--verbose", "")
+		i := cmd().Invoke("--verbose", "-")
 		i.Environ.Set(serpent.CompletionModeEnv, "1")
 		io := fakeIO(i)
 		err := i.Run()
 		require.NoError(t, err)
-		require.Equal(t, "altfile\nfile\nrequired-flag\ntoupper\n--prefix\n", io.Stdout.String())
+		require.Equal(t, "--prefix\n", io.Stdout.String())
 	})
 
 	t.Run("EnumOK", func(t *testing.T) {

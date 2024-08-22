@@ -1,6 +1,8 @@
 package serpent
 
 import (
+	"strings"
+
 	"github.com/spf13/pflag"
 )
 
@@ -14,20 +16,25 @@ func (inv *Invocation) IsCompletionMode() bool {
 	return ok
 }
 
-// DefaultCompletionHandler is a handler that prints all  known flags and
-// subcommands that haven't been exhaustively set.
+// DefaultCompletionHandler is a handler that prints all the subcommands, or
+// all the options that haven't been exhaustively set, if the current word
+// starts with a dash.
 func DefaultCompletionHandler(inv *Invocation) []string {
+	_, cur := inv.CurWords()
 	var allResps []string
+	if strings.HasPrefix(cur, "-") {
+		for _, opt := range inv.Command.Options {
+			_, isSlice := opt.Value.(pflag.SliceValue)
+			if opt.ValueSource == ValueSourceNone ||
+				opt.ValueSource == ValueSourceDefault ||
+				isSlice {
+				allResps = append(allResps, "--"+opt.Flag)
+			}
+		}
+		return allResps
+	}
 	for _, cmd := range inv.Command.Children {
 		allResps = append(allResps, cmd.Name())
-	}
-	for _, opt := range inv.Command.Options {
-		_, isSlice := opt.Value.(pflag.SliceValue)
-		if opt.ValueSource == ValueSourceNone ||
-			opt.ValueSource == ValueSourceDefault ||
-			isSlice {
-			allResps = append(allResps, "--"+opt.Flag)
-		}
 	}
 	return allResps
 }
