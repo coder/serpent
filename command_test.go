@@ -552,11 +552,22 @@ func TestCommand_RootRaw(t *testing.T) {
 
 func TestCommand_HyphenHyphen(t *testing.T) {
 	t.Parallel()
+	var verbose bool
 	cmd := &serpent.Command{
 		Handler: (func(i *serpent.Invocation) error {
 			_, _ = i.Stdout.Write([]byte(strings.Join(i.Args, " ")))
+			if verbose {
+				return xerrors.New("verbose should not be true because flag after --")
+			}
 			return nil
 		}),
+		Options: serpent.OptionSet{
+			{
+				Name:  "verbose",
+				Flag:  "verbose",
+				Value: serpent.BoolOf(&verbose),
+			},
+		},
 	}
 
 	inv := cmd.Invoke("--", "--verbose", "--friendly")
