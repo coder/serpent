@@ -31,10 +31,10 @@ func DefaultCompletionHandler(inv *Invocation) []string {
 				allResps = append(allResps, "--"+opt.Flag)
 			}
 		}
-	} else {
-		for _, cmd := range inv.Command.Children {
-			allResps = append(allResps, cmd.Name())
-		}
+		return allResps
+	}
+	for _, cmd := range inv.Command.Children {
+		allResps = append(allResps, cmd.Name())
 	}
 	return allResps
 }
