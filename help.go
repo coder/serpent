@@ -322,9 +322,9 @@ func (lm *newlineLimiter) Write(p []byte) (int, error) {
 
 var usageWantsArgRe = regexp.MustCompile(`<.*>`)
 
-// defaultHelpFn returns a function that generates usage (help)
+// DefaultHelpFn returns a function that generates usage (help)
 // output for a given command.
-func defaultHelpFn() HandlerFunc {
+func DefaultHelpFn() HandlerFunc {
 	return func(inv *Invocation) error {
 		// We use stdout for help and not stderr since there's no straightforward
 		// way to distinguish between a user error and a help request.
