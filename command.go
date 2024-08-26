@@ -479,7 +479,7 @@ func (inv *Invocation) run(state *runState) error {
 
 	if inv.Command.Handler == nil || errors.Is(state.flagParseErr, pflag.ErrHelp) {
 		if inv.Command.HelpHandler == nil {
-			return defaultHelpFn()(inv)
+			return DefaultHelpFn()(inv)
 		}
 		return inv.Command.HelpHandler(inv)
 	}
