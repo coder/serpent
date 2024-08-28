@@ -322,6 +322,14 @@ func (lm *newlineLimiter) Write(p []byte) (int, error) {
 
 var usageWantsArgRe = regexp.MustCompile(`<.*>`)
 
+type UnknownSubcommandError struct {
+	Args []string
+}
+
+func (e *UnknownSubcommandError) Error() string {
+	return fmt.Sprintf("unknown subcommand %q", strings.Join(e.Args, " "))
+}
+
 // DefaultHelpFn returns a function that generates usage (help)
 // output for a given command.
 func DefaultHelpFn() HandlerFunc {
@@ -352,7 +360,7 @@ func DefaultHelpFn() HandlerFunc {
 		if len(inv.Args) > 0 {
 			// Return an error so that exit status is non-zero when
 			// a subcommand is not found.
-			return fmt.Errorf("error: unknown subcommand %q", strings.Join(inv.Args, " "))
+			return &UnknownSubcommandError{Args: inv.Args}
 		}
 		return nil
 	}
