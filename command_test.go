@@ -49,8 +49,14 @@ func sampleCommand(t *testing.T) *serpent.Command {
 		Use: "root [subcommand]",
 		Options: serpent.OptionSet{
 			serpent.Option{
-				Name:  "verbose",
-				Flag:  "verbose",
+				Name:    "verbose",
+				Flag:    "verbose",
+				Default: "false",
+				Value:   serpent.BoolOf(&verbose),
+			},
+			serpent.Option{
+				Name:  "verbose-old",
+				Flag:  "verbode-old",
 				Value: serpent.BoolOf(&verbose),
 			},
 			serpent.Option{
@@ -743,6 +749,12 @@ func TestCommand_DefaultsOverride(t *testing.T) {
 						YAML:    "url",
 					},
 					{
+						Name:  "url-deprecated",
+						Flag:  "url-deprecated",
+						Env:   "URL_DEPRECATED",
+						Value: serpent.StringOf(&got),
+					},
+					{
 						Name:    "config",
 						Flag:    "config",
 						Default: "",
@@ -790,6 +802,17 @@ func TestCommand_DefaultsOverride(t *testing.T) {
 		inv.Args = []string{"--config", fi.Name(), "--url", "good.com"}
 	})
 
+	test("EnvOverYAML", "good.com", func(t *testing.T, inv *serpent.Invocation) {
+		fi, err := os.CreateTemp(t.TempDir(), "config.yaml")
+		require.NoError(t, err)
+		defer fi.Close()
+
+		_, err = fi.WriteString("url: bad.com")
+		require.NoError(t, err)
+
+		inv.Environ.Set("URL", "good.com")
+	})
+
 	test("YAMLOverDefault", "good.com", func(t *testing.T, inv *serpent.Invocation) {
 		fi, err := os.CreateTemp(t.TempDir(), "config.yaml")
 		require.NoError(t, err)
@@ -800,4 +823,57 @@ func TestCommand_DefaultsOverride(t *testing.T) {
 
 		inv.Args = []string{"--config", fi.Name()}
 	})
+
+	test("AltFlagOverDefault", "good.com", func(t *testing.T, inv *serpent.Invocation) {
+		inv.Args = []string{"--url-deprecated", "good.com"}
+	})
+}
+
+func TestCommand_OptionsWithSharedValue(t *testing.T) {
+	t.Parallel()
+
+	var got string
+	makeCmd := func(def, altDef string) *serpent.Command {
+		got = ""
+		return &serpent.Command{
+			Options: serpent.OptionSet{
+				{
+					Name:    "url",
+					Flag:    "url",
+					Default: def,
+					Value:   serpent.StringOf(&got),
+				},
+				{
+					Name:    "alt-url",
+					Flag:    "alt-url",
+					Default: altDef,
+					Value:   serpent.StringOf(&got),
+				},
+			},
+			Handler: (func(i *serpent.Invocation) error {
+				return nil
+			}),
+		}
+	}
+
+	// Check proper value propagation.
+	err := makeCmd("def.com", "def.com").Invoke().Run()
+	require.NoError(t, err, "default values are same")
+	require.Equal(t, "def.com", got)
+
+	err = makeCmd("def.com", "").Invoke().Run()
+	require.NoError(t, err, "other default value is empty")
+	require.Equal(t, "def.com", got)
+
+	err = makeCmd("def.com", "").Invoke("--url", "sup").Run()
+	require.NoError(t, err)
+	require.Equal(t, "sup", got)
+
+	err = makeCmd("def.com", "").Invoke("--alt-url", "hup").Run()
+	require.NoError(t, err)
+	require.Equal(t, "hup", got)
+
+	// Catch invalid configuration.
+	err = makeCmd("def.com", "alt-def.com").Invoke().Run()
+	require.Error(t, err, "default values are different")
 }
