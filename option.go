@@ -333,16 +333,10 @@ func (optSet *OptionSet) SetDefaults() error {
 		groupByValue[opt.Value] = append(groupByValue[opt.Value], opt)
 	}
 
+	// Sorts by value source, then a default value being set.
 	sortOptionByValueSourcePriorityOrDefault := func(a, b *Option) int {
 		if a.ValueSource != b.ValueSource {
-			for _, vs := range valueSourcePriority {
-				if a.ValueSource == vs {
-					return -1
-				}
-				if b.ValueSource == vs {
-					return 1
-				}
-			}
+			return slices.Index(valueSourcePriority, a.ValueSource) - slices.Index(valueSourcePriority, b.ValueSource)
 		}
 		if a.Default != b.Default {
 			if a.Default == "" {
