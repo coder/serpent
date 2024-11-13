@@ -333,31 +333,32 @@ func (optSet *OptionSet) SetDefaults() error {
 		groupByValue[opt.Value] = append(groupByValue[opt.Value], opt)
 	}
 
+	sortOptionByValueSourcePriorityOrDefault := func(a, b *Option) int {
+		if a.ValueSource != b.ValueSource {
+			for _, vs := range valueSourcePriority {
+				if a.ValueSource == vs {
+					return -1
+				}
+				if b.ValueSource == vs {
+					return 1
+				}
+			}
+		}
+		if a.Default != b.Default {
+			if a.Default == "" {
+				return 1
+			}
+			if b.Default == "" {
+				return -1
+			}
+		}
+		return 0
+	}
 	for _, opts := range groupByValue {
 		// Sort the options by priority and whether or not a default is
 		// set. This won't affect the value but represents correctness
 		// from whence the value originated.
-		slices.SortFunc(opts, func(a, b *Option) int {
-			if a.ValueSource != b.ValueSource {
-				for _, vs := range valueSourcePriority {
-					if a.ValueSource == vs {
-						return -1
-					}
-					if b.ValueSource == vs {
-						return 1
-					}
-				}
-			}
-			if a.Default != b.Default {
-				if a.Default == "" {
-					return 1
-				}
-				if b.Default == "" {
-					return -1
-				}
-			}
-			return 0
-		})
+		slices.SortFunc(opts, sortOptionByValueSourcePriorityOrDefault)
 
 		// If the first option has a value source, then we don't need to
 		// set the default, but mark the source for all options.
