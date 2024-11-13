@@ -213,8 +213,10 @@ func (o *Option) setFromYAMLNode(n *yaml.Node) error {
 		// We treat empty values as nil for consistency with other option
 		// mechanisms.
 		if len(n.Content) == 0 {
-			o.Value = nil
-			return nil
+			if o.Value == nil {
+				return nil
+			}
+			return o.Value.Set("")
 		}
 		return n.Decode(o.Value)
 	case yaml.MappingNode:
