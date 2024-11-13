@@ -840,12 +840,14 @@ func TestCommand_OptionsWithSharedValue(t *testing.T) {
 				{
 					Name:    "url",
 					Flag:    "url",
+					Env:     "URL",
 					Default: def,
 					Value:   serpent.StringOf(&got),
 				},
 				{
 					Name:    "alt-url",
 					Flag:    "alt-url",
+					Env:     "ALT_URL",
 					Default: altDef,
 					Value:   serpent.StringOf(&got),
 				},
@@ -872,6 +874,30 @@ func TestCommand_OptionsWithSharedValue(t *testing.T) {
 	err = makeCmd("def.com", "").Invoke("--alt-url", "hup").Run()
 	require.NoError(t, err)
 	require.Equal(t, "hup", got)
+
+	// Both flags are given, last wins.
+	err = makeCmd("def.com", "").Invoke("--url", "sup", "--alt-url", "hup").Run()
+	require.NoError(t, err)
+	require.Equal(t, "hup", got)
+
+	// Both flags are given, last wins #2.
+	err = makeCmd("", "def.com").Invoke("--alt-url", "hup", "--url", "sup").Run()
+	require.NoError(t, err)
+	require.Equal(t, "sup", got)
+
+	// Both flags are given, option type priority wins.
+	inv := makeCmd("def.com", "").Invoke("--alt-url", "hup")
+	inv.Environ.Set("URL", "sup")
+	err = inv.Run()
+	require.NoError(t, err)
+	require.Equal(t, "hup", got)
+
+	// Both flags are given, option type priority wins #2.
+	inv = makeCmd("", "def.com").Invoke("--url", "sup")
+	inv.Environ.Set("ALT_URL", "hup")
+	err = inv.Run()
+	require.NoError(t, err)
+	require.Equal(t, "sup", got)
 
 	// Catch invalid configuration.
 	err = makeCmd("def.com", "alt-def.com").Invoke().Run()
