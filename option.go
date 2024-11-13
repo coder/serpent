@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -20,6 +21,14 @@ const (
 	ValueSourceYAML    ValueSource = "yaml"
 	ValueSourceDefault ValueSource = "default"
 )
+
+var valueSourcePriority = []ValueSource{
+	ValueSourceFlag,
+	ValueSourceEnv,
+	ValueSourceYAML,
+	ValueSourceDefault,
+	ValueSourceNone,
+}
 
 // Option is a configuration option for a CLI application.
 type Option struct {
@@ -305,16 +314,12 @@ func (optSet *OptionSet) SetDefaults() error {
 
 	var merr *multierror.Error
 
-	for i, opt := range *optSet {
-		// Skip values that may have already been set by the user.
-		if opt.ValueSource != ValueSourceNone {
-			continue
-		}
-
-		if opt.Default == "" {
-			continue
-		}
-
+	// It's common to have multiple options with the same value to
+	// handle deprecation. We group the options by value so that we
+	// don't let other options overwrite user input.
+	groupByValue := make(map[pflag.Value][]*Option)
+	for i := range *optSet {
+		opt := &(*optSet)[i]
 		if opt.Value == nil {
 			merr = multierror.Append(
 				merr,
@@ -325,13 +330,69 @@ func (optSet *OptionSet) SetDefaults() error {
 			)
 			continue
 		}
-		(*optSet)[i].ValueSource = ValueSourceDefault
-		if err := opt.Value.Set(opt.Default); err != nil {
+		groupByValue[opt.Value] = append(groupByValue[opt.Value], opt)
+	}
+
+	// Sorts by value source, then a default value being set.
+	sortOptionByValueSourcePriorityOrDefault := func(a, b *Option) int {
+		if a.ValueSource != b.ValueSource {
+			return slices.Index(valueSourcePriority, a.ValueSource) - slices.Index(valueSourcePriority, b.ValueSource)
+		}
+		if a.Default != b.Default {
+			if a.Default == "" {
+				return 1
+			}
+			if b.Default == "" {
+				return -1
+			}
+		}
+		return 0
+	}
+	for _, opts := range groupByValue {
+		// Sort the options by priority and whether or not a default is
+		// set. This won't affect the value but represents correctness
+		// from whence the value originated.
+		slices.SortFunc(opts, sortOptionByValueSourcePriorityOrDefault)
+
+		// If the first option has a value source, then we don't need to
+		// set the default, but mark the source for all options.
+		if opts[0].ValueSource != ValueSourceNone {
+			for _, opt := range opts[1:] {
+				opt.ValueSource = opts[0].ValueSource
+			}
+			continue
+		}
+
+		var optWithDefault *Option
+		for _, opt := range opts {
+			if opt.Default == "" {
+				continue
+			}
+			if optWithDefault != nil && optWithDefault.Default != opt.Default {
+				merr = multierror.Append(
+					merr,
+					xerrors.Errorf(
+						"parse %q: multiple defaults set for the same value: %q and %q (%q)",
+						opt.Name, opt.Default, optWithDefault.Default, optWithDefault.Name,
+					),
+				)
+				continue
+			}
+			optWithDefault = opt
+		}
+		if optWithDefault == nil {
+			continue
+		}
+		if err := optWithDefault.Value.Set(optWithDefault.Default); err != nil {
 			merr = multierror.Append(
-				merr, xerrors.Errorf("parse %q: %w", opt.Name, err),
+				merr, xerrors.Errorf("parse %q: %w", optWithDefault.Name, err),
 			)
 		}
+		for _, opt := range opts {
+			opt.ValueSource = ValueSourceDefault
+		}
 	}
+
 	return merr.ErrorOrNil()
 }
 
