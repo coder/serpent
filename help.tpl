@@ -8,6 +8,11 @@
 {{"\n"}}
 {{- end}}
 
+{{- with .Deprecated }}
+{{- indent (printf "DEPRECATED: %s" .) 2 | wrapTTY }}
+{{"\n"}}
+{{- end }}
+
 {{ with .Aliases }}
 {{"  Aliases: "}} {{- joinStrings .}}
 {{- end }}

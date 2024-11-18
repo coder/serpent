@@ -43,6 +43,11 @@ type Command struct {
 	// Hidden determines whether the command should be hidden from help.
 	Hidden bool
 
+	// Deprecated indicates whether this command is deprecated.
+	// If empty, the command is not deprecated.
+	// If set, the value is used as the deprecation message.
+	Deprecated string `json:"deprecated,omitempty"`
+
 	// RawArgs determines whether the command should receive unparsed arguments.
 	// No flags are parsed when set, and the command is responsible for parsing
 	// its own flags.
@@ -316,6 +321,13 @@ func (inv *Invocation) CurWords() (prev string, cur string) {
 // allArgs is wired through the stack so that global flags can be accepted
 // anywhere in the command invocation.
 func (inv *Invocation) run(state *runState) error {
+	if inv.Command.Deprecated != "" {
+		fmt.Fprintf(inv.Stderr, "%s %q is deprecated!. %s\n",
+			prettyHeader("warning"),
+			inv.Command.FullName(),
+			inv.Command.Deprecated,
+		)
+	}
 	err := inv.Command.Options.ParseEnv(inv.Environ)
 	if err != nil {
 		return xerrors.Errorf("parsing env: %w", err)

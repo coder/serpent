@@ -376,6 +376,27 @@ func TestCommand(t *testing.T) {
 		err := i.Run()
 		require.NoError(t, err, fio.Stdout.String())
 	})
+
+	t.Run("DeprecatedCommand", func(t *testing.T) {
+		t.Parallel()
+
+		deprecatedCmd := &serpent.Command{
+			Use:        "deprecated-cmd",
+			Deprecated: "This command is deprecated and will be removed in the future.",
+			Handler: func(i *serpent.Invocation) error {
+				_, _ = i.Stdout.Write([]byte("Running deprecated command"))
+				return nil
+			},
+		}
+
+		i := deprecatedCmd.Invoke()
+		io := fakeIO(i)
+		err := i.Run()
+		require.NoError(t, err)
+		expectedWarning := fmt.Sprintf("WARNING: %q is deprecated!. %s\n", deprecatedCmd.Use, deprecatedCmd.Deprecated)
+		require.Equal(t, io.Stderr.String(), expectedWarning)
+		require.Contains(t, io.Stdout.String(), "Running deprecated command")
+	})
 }
 
 func TestCommand_DeepNest(t *testing.T) {
