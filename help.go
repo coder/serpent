@@ -62,13 +62,20 @@ func helpColor(s string) termenv.Color {
 	return helpColorProfile.Color(s)
 }
 
+// prettyHeader formats a header string with consistent styling.
+// It uppercases the text, adds a colon, and applies the header color.
+func prettyHeader(s string) string {
+	headerFg := pretty.FgColor(helpColor("#337CA0"))
+	s = strings.ToUpper(s)
+	txt := pretty.String(s, ":")
+	headerFg.Format(txt)
+	return txt.String()
+}
+
 var defaultHelpTemplate = func() *template.Template {
 	var (
 		optionFg = pretty.FgColor(
 			helpColor("#04A777"),
-		)
-		headerFg = pretty.FgColor(
-			helpColor("#337CA0"),
 		)
 	)
 	return template.Must(
@@ -85,12 +92,7 @@ var defaultHelpTemplate = func() *template.Template {
 					optionFg.Format(txt)
 					return txt.String()
 				},
-				"prettyHeader": func(s string) string {
-					s = strings.ToUpper(s)
-					txt := pretty.String(s, ":")
-					headerFg.Format(txt)
-					return txt.String()
-				},
+				"prettyHeader": prettyHeader,
 				"typeHelper": func(opt *Option) string {
 					switch v := opt.Value.(type) {
 					case *Enum:
