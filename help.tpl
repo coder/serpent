@@ -17,6 +17,14 @@
 {{"  Aliases: "}} {{- joinStrings .}}
 {{- end }}
 
+{{ with .Tool }}
+{{"  MCP Tool: "}} {{- . }}
+{{- end }}
+
+{{ with .Resource }}
+{{"  MCP Resource: "}} {{- . }}
+{{- end }}
+
 {{- with .Long}}
 {{"\n"}}
 {{- indent . 2}}

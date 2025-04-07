@@ -13,8 +13,8 @@ require (
 	github.com/pion/udp v0.1.4
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/crypto v0.19.0
 	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a
+	golang.org/x/term v0.17.0
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -39,7 +39,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.19.0 // indirect
 	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/sys v0.17.0 // indirect
-	golang.org/x/term v0.17.0 // indirect
 	google.golang.org/genproto v0.0.0-20231106174013-bbf56f31fb17 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231106174013-bbf56f31fb17 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231120223509-83a465c0220f // indirect

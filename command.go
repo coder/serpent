@@ -59,6 +59,16 @@ type Command struct {
 	Options     OptionSet
 	Annotations Annotations
 
+	// Tool is the name of the MCP tool this command provides.
+	// If set, the command can be invoked via MCP as a tool.
+	// Tool and Resource are mutually exclusive.
+	Tool string
+
+	// Resource is the URI of the MCP resource this command provides.
+	// If set, the command can be accessed via MCP as a resource.
+	// Tool and Resource are mutually exclusive.
+	Resource string
+
 	// Middleware is called before the Handler.
 	// Use Chain() to combine multiple middlewares.
 	Middleware  MiddlewareFunc
@@ -105,6 +115,11 @@ func (c *Command) init() error {
 		c.Use = "unnamed"
 	}
 	var merr error
+
+	// Validate that Tool and Resource are mutually exclusive
+	if c.Tool != "" && c.Resource != "" {
+		merr = errors.Join(merr, xerrors.Errorf("command %q cannot have both Tool and Resource set", c.Name()))
+	}
 
 	for i := range c.Options {
 		opt := &c.Options[i]
@@ -556,6 +571,12 @@ func findArg(want string, args []string, fs *pflag.FlagSet) (int, error) {
 	}
 
 	return -1, xerrors.Errorf("arg %s not found", want)
+}
+
+// IsMCPEnabled returns true if the command is accessible via MCP
+// (has either Tool or Resource field set)
+func (c *Command) IsMCPEnabled() bool {
+	return c.Tool != "" || c.Resource != ""
 }
 
 // Run executes the command.
