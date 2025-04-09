@@ -163,6 +163,7 @@ type MCPServer struct {
 	stderr            io.Writer
 	cmdFinder         CommandFinder
 	toolCmds          map[string]*Command
+	toolFlags         map[string][]string // overrides flags for given commands
 	resourceCmds      map[string]*Command
 	resourceTemplates map[string]*Command // Maps URI templates to commands
 	initialized       bool                // Track if the server has been initialized
@@ -203,6 +204,7 @@ func NewMCPServer(rootCmd *Command, stdin io.Reader, stdout, stderr io.Writer) *
 		stderr:            stderr,
 		cmdFinder:         DefaultCommandFinder,
 		toolCmds:          make(map[string]*Command),
+		toolFlags:         make(map[string][]string),
 		resourceCmds:      make(map[string]*Command),
 		resourceTemplates: make(map[string]*Command),
 		protocolVersion:   "2025-03-26", // Default to latest version
@@ -212,6 +214,9 @@ func NewMCPServer(rootCmd *Command, stdin io.Reader, stdout, stderr io.Writer) *
 	rootCmd.Walk(func(cmd *Command) {
 		if cmd.Tool != "" {
 			server.toolCmds[cmd.Tool] = cmd
+			if len(cmd.ToolFlags) > 0 {
+				server.toolFlags[cmd.Tool] = cmd.ToolFlags[:]
+			}
 		}
 		if cmd.Resource != "" {
 			if strings.Contains(cmd.Resource, "{") && strings.Contains(cmd.Resource, "}") {
@@ -499,6 +504,13 @@ func (s *MCPServer) handleCallTool(req JSONRPC2Request) {
 			}
 		default:
 			cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%v", k, v))
+		}
+	}
+
+	// Finally, add any overridden flags at the tool level.
+	if toolFlags, ok := s.toolFlags[params.Name]; ok {
+		for _, flag := range toolFlags {
+			cmdArgs = append(cmdArgs, flag)
 		}
 	}
 

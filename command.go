@@ -64,6 +64,9 @@ type Command struct {
 	// Tool and Resource are mutually exclusive.
 	Tool string
 
+	// ToolFlags is a set of flags to automatically set for a given MCP command.
+	ToolFlags []string
+
 	// Resource is the URI of the MCP resource this command provides.
 	// If set, the command can be accessed via MCP as a resource.
 	// Tool and Resource are mutually exclusive.
