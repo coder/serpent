@@ -378,7 +378,6 @@ func TestPosArgsFromCmdUsage(t *testing.T) {
 				"arg1__a": map[string]any{
 					"description": "required argument",
 					"type":        "string",
-					"required":    true,
 				},
 				"arg2__b": map[string]any{
 					"description": "optional argument",
@@ -387,7 +386,6 @@ func TestPosArgsFromCmdUsage(t *testing.T) {
 				"arg3__c": map[string]any{
 					"description": "required argument",
 					"type":        "string",
-					"required":    true,
 				},
 				"arg4__d": map[string]any{
 					"description": "optional argument",
