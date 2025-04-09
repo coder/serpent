@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestToolAndResourceFields(t *testing.T) {
@@ -345,5 +347,107 @@ func TestLenientParameterHandling(t *testing.T) {
 				t.Error("Expected error but got none")
 			}
 		})
+	}
+}
+
+func TestPosArgsFromCmdUsage(t *testing.T) {
+	for _, tc := range []struct {
+		input         string
+		expected      map[string]any
+		expectedError string
+	}{
+		{
+			input:         "",
+			expectedError: "usage may not be empty",
+		},
+		{
+			input:    "command",
+			expected: map[string]any{},
+		},
+		{
+			input:    "[flags]",
+			expected: map[string]any{},
+		},
+		{
+			input:    "command [flags]",
+			expected: map[string]any{},
+		},
+		{
+			input: "command [flags] a [b] <c> [<d>] [e...]",
+			expected: map[string]any{
+				"arg1__a": map[string]any{
+					"description": "required argument",
+					"type":        "string",
+					"required":    true,
+				},
+				"arg2__b": map[string]any{
+					"description": "optional argument",
+					"type":        "string",
+				},
+				"arg3__c": map[string]any{
+					"description": "required argument",
+					"type":        "string",
+					"required":    true,
+				},
+				"arg4__d": map[string]any{
+					"description": "optional argument",
+					"type":        "string",
+				},
+				"arg5__e": map[string]any{
+					"description": "optional argument",
+					"type":        "string",
+				},
+			},
+		},
+		{
+			input: "command [flags] <a|b> [c|d]",
+			expected: map[string]any{
+				"arg1__a_b": map[string]any{
+					"description": "required argument",
+					"enum":        []string{"a", "b"},
+					"type":        "string",
+				},
+				"arg2__c_d": map[string]any{
+					"description": "optional argument",
+					"enum":        []string{"c", "d"},
+					"type":        "string",
+				},
+			},
+		},
+		{
+			input:         "command [flags] <a b>",
+			expectedError: "malformed usage",
+		},
+		{
+			input:         "command [flags] [c | d]",
+			expectedError: "malformed usage",
+		},
+		{
+			input:         "command [flags] {e f}",
+			expectedError: "malformed usage",
+		},
+	} {
+		actual, err := PosArgsFromCmdUsage(tc.input)
+		if tc.expectedError == "" {
+			if err != nil {
+				t.Errorf("expected no error from %q, got %v", tc.input, err)
+				continue
+			}
+			if diff := cmp.Diff(tc.expected, actual); diff != "" {
+				t.Errorf("unexpected diff (-want +got):\n%s", diff)
+				continue
+			}
+		} else {
+			if err == nil {
+				t.Errorf("expected error containing '%s' from input %q, got no error", tc.expectedError, tc.input)
+				continue
+			}
+			if !strings.Contains(err.Error(), tc.expectedError) {
+				t.Errorf("expected error containing '%s' from input %q, got '%s'", tc.expectedError, tc.input, err.Error())
+			}
+			if len(actual) != 0 {
+				t.Errorf("expected empty result on error, got %v", actual)
+			}
+		}
 	}
 }

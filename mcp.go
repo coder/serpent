@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"slices"
 	"strings"
 
 	"golang.org/x/xerrors"
@@ -473,20 +474,26 @@ func (s *MCPServer) handleCallTool(req JSONRPC2Request) {
 	// Convert the arguments map to command-line args
 	var cmdArgs []string
 
-	// Check for positional arguments (using "_" as the key)
-	if posArgs, ok := args["_"]; ok {
-		switch val := posArgs.(type) {
-		case string:
-			cmdArgs = append(cmdArgs, val)
-		case []any:
-			for _, item := range val {
-				cmdArgs = append(cmdArgs, fmt.Sprintf("%v", item))
+	// Check for positional arguments prefix with `argN__<name>`
+	deleteKeys := make([]string, 0)
+	for k, v := range args {
+		if strings.HasPrefix(k, "arg") && len(k) > 4 && k[3] >= '0' && k[3] <= '9' {
+			deleteKeys = append(deleteKeys, k)
+			switch val := v.(type) {
+			case string:
+				cmdArgs = append(cmdArgs, val)
+			case []any:
+				for _, item := range val {
+					cmdArgs = append(cmdArgs, fmt.Sprintf("%v", item))
+				}
+			default:
+				cmdArgs = append(cmdArgs, fmt.Sprintf("%v", val))
 			}
-		default:
-			cmdArgs = append(cmdArgs, fmt.Sprintf("%v", val))
 		}
-		// Remove the "_" key so it's not processed as a flag
-		delete(args, "_")
+	}
+	// Delete any of the positional argument keys so they don't get processed below.
+	for _, dk := range deleteKeys {
+		delete(args, dk)
 	}
 
 	// Process remaining arguments as flags
@@ -638,6 +645,15 @@ func (s *MCPServer) generateJSONSchema(cmd *Command) (json.RawMessage, error) {
 
 	properties := schema["properties"].(map[string]any)
 	requiredList := schema["required"].([]string)
+
+	// Add positional arguments based on the cmd usage.
+	if posArgs, err := PosArgsFromCmdUsage(cmd.Use); err != nil {
+		return nil, xerrors.Errorf("unable to process positional argument for command %q: %w", cmd.Name(), err)
+	} else {
+		for k, v := range posArgs {
+			properties[k] = v
+		}
+	}
 
 	// Process each option in the command
 	for _, opt := range cmd.Options {
@@ -924,4 +940,109 @@ Commands with neither Tool nor Resource set will not be accessible via MCP.`,
 			return server.Run(inv.Context())
 		},
 	}
+}
+
+// PosArgsFromCmdUsage attempts to process a 'usage' string into a set of
+// arguments for display as tool parameters.
+// Example: the usage string `foo [flags] <bar> [baz] [razzle|dazzle]`
+// defines three arguments for the `foo` command:
+//   - bar (required)
+//   - baz (optional)
+//   - the string `razzle` XOR `dazzle` (optional)
+//
+// The expected output of the above is as follows:
+//
+//	{
+//	  "arg1:bar": {
+//	    "type": "string",
+//	    "description": "required argument",
+//	  },
+//	  "arg2:baz": {
+//	    "type": "string",
+//	    "description": "optional argument",
+//	  },
+//	  "arg3:razzle_dazzle": {
+//	    "type": "string",
+//	    "enum": ["razzle", "dazzle"]
+//	  },
+//	}
+//
+// The usage string is processed given the following assumptions:
+//  1. The first non-whitespace string of usage is the name of the command
+//     and will be skipped.
+//  2. The pseudo-argument specifier [flags] will also be skipped, if present.
+//  3. Argument specifiers enclosed by [square brackets] are considered optional.
+//  4. All other argument specifiers are considered required.
+//  5. Invidiual argument specifiers are separated by a single whitespace character.
+//     Argument specifiers that contain a space are considered invalid (e.g. `[foo bar]`)
+//
+// Variadic arguments [arg...] are treated as a single argument.
+func PosArgsFromCmdUsage(usage string) (map[string]any, error) {
+	if len(usage) == 0 {
+		return nil, xerrors.Errorf("usage may not be empty")
+	}
+
+	// Step 1: preprocessing. Skip the first token.
+	parts := strings.Fields(usage)
+	if len(parts) < 2 {
+		return map[string]any{}, nil
+	}
+	parts = parts[1:]
+	// Skip [flags], if present.
+	parts = slices.DeleteFunc(parts, func(s string) bool {
+		return s == "[flags]"
+	})
+
+	result := make(map[string]any, len(parts))
+
+	// Process each argument token
+	for i, part := range parts {
+		argIndex := i + 1
+		argKey := fmt.Sprintf("arg%d__", argIndex)
+
+		// Check for unbalanced brackets in the part.
+		// This catches cases like "command [flags] [a" or "command [flags] a b [c | d]"
+		// which would be split into multiple tokens by strings.Fields()
+		openSquare := strings.Count(part, "[")
+		closeSquare := strings.Count(part, "]")
+		openAngle := strings.Count(part, "<")
+		closeAngle := strings.Count(part, ">")
+		openBrace := strings.Count(part, "{")
+		closeBrace := strings.Count(part, "}")
+
+		if openSquare != closeSquare {
+			return nil, xerrors.Errorf("malformed usage: unbalanced square bracket at %q", part)
+		} else if openAngle != closeAngle {
+			return nil, xerrors.Errorf("malformed usage: unbalanced angle bracket at %q", part)
+		} else if openBrace != closeBrace {
+			return nil, xerrors.Errorf("malformed usage: unbalanced brace at %q", part)
+		}
+
+		// Determine if the argument is optional (enclosed in square brackets)
+		isOptional := openSquare > 0
+		cleanName := strings.Trim(part, "[]{}<>.")
+		description := "required argument"
+		if isOptional {
+			description = "optional argument"
+		}
+
+		argVal := map[string]any{
+			"type":        "string",
+			"description": description,
+			// "required":    !isOptional,
+		}
+
+		keyName := cleanName
+		// If an argument specifier contains a pipe, treat it as an enum.
+		if strings.Contains(cleanName, "|") {
+			choices := strings.Split(cleanName, "|")
+			// Create a name by joining alternatives with underscores
+			keyName = strings.Join(choices, "_")
+			argVal["enum"] = choices
+		}
+		argKey += keyName
+		result[argKey] = argVal
+	}
+
+	return result, nil
 }
