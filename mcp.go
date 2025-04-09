@@ -674,7 +674,7 @@ func (s *MCPServer) generateJSONSchema(cmd *Command) (json.RawMessage, error) {
 		case "durationSlice":
 			property["type"] = "array"
 			property["items"] = map[string]any{"type": "string", "format": "duration"}
-		case "stringArray", "stringToString", "stringToInt", "stringToInt64": // More pflag types
+		case "string-array", "stringArray", "stringToString", "stringToInt", "stringToInt64": // More pflag types
 			// stringArray is like stringSlice
 			// Map types are complex, represent as object for now
 			if valueType == "stringArray" {
