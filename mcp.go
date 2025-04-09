@@ -840,6 +840,8 @@ func (s *MCPServer) handleInitialize(req JSONRPC2Request) {
 		Capabilities: capabilities,
 	}
 
+	s.initialized = true
+
 	// Send the response
 	s.sendSuccessResponse(req.ID, result)
 }
