@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"path"
@@ -362,7 +363,7 @@ func (s *MCPServer) handleListTools(req JSONRPC2Request) {
 
 		tools = append(tools, Tool{
 			Name:        name,
-			Description: cmd.Short,
+			Description: cmd.Use + " -- " + cmd.Short,
 			InputSchema: schema,
 		})
 	}
@@ -426,6 +427,17 @@ func (s *MCPServer) handleListResourceTemplates(req JSONRPC2Request) {
 	s.sendSuccessResponse(req.ID, response)
 }
 
+// errReader is an io.Reader that never reads successfully, returning a predefined error.
+type errReader string
+
+// Read implements io.Reader
+func (r errReader) Read([]byte) (int, error) {
+	return 0, errors.New(string(r))
+}
+
+// Commands may attempt to read stdin. This error is returned on any attempted read from stdin from a command invocation.
+var dontReadStdin = errReader("This command is attempting to read from stdin, which indicates that it is missing one or more required arguments.")
+
 // handleCallTool handles the tools/call method
 func (s *MCPServer) handleCallTool(req JSONRPC2Request) {
 	params, err := UnmarshalParamsLenient[CallToolParams](req.Params)
@@ -443,6 +455,7 @@ func (s *MCPServer) handleCallTool(req JSONRPC2Request) {
 	// Create a new invocation with captured stdout/stderr
 	var stdout, stderr strings.Builder
 	inv := cmd.Invoke()
+	inv.Stdin = dontReadStdin // MCP tools have no stdin.
 	inv.Stdout = &stdout
 	inv.Stderr = &stderr
 
@@ -510,8 +523,8 @@ func (s *MCPServer) handleCallTool(req JSONRPC2Request) {
 		})
 	}
 
-	// If no content but error, add error message
-	if len(content) == 0 && err != nil {
+	// Add error, if present.
+	if err != nil {
 		content = append(content, ToolContent{
 			Type: "text",
 			Text: err.Error(),
