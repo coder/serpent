@@ -91,6 +91,49 @@ type Option struct {
 And is used by each [Command](https://pkg.go.dev/github.com/coder/serpent#Command) when
 passed as an array to the `Options` field.
 
-## More coming...
-This README is a stub for now. We'll better explain the design and usage
-of `serpent` in the future.
+## Comparison with Cobra
+
+Here is a comparison of the `help` output between a simple `echo` command in Cobra and Serpent.
+
+### Cobra
+
+```
+echo is for echoing anything back. Echo works a lot like print, except it has a child command.
+
+Usage:
+  echo [string to echo] [flags]
+
+Flags:
+  -h, --help    help for echo
+  -u, --upper   make the output uppercase
+```
+
+### Serpent
+
+```
+USAGE:
+  echo <text>
+
+  Prints the given text to the console.
+
+OPTIONS:
+      --upper bool
+          Prints the text in upper case.
+```
+
+## Migrating from Cobra
+
+Serpent is designed to be a replacement for Cobra and Viper. If you are familiar with Cobra, the transition to Serpent should be relatively straightforward. The main differences are:
+
+*   **Command Structure:** Serpent uses a `serpent.Command` struct which is similar to `cobra.Command`.
+*   **Options:** Serpent has a more flexible and powerful option system that allows you to define options from multiple sources (flags, environment variables, config files, etc.) in a single place.
+*   **Middleware:** Serpent has a middleware system that allows you to compose functionality and apply it to your commands.
+*   **Testability:** Serpent is designed to be more testable than Cobra. For example, OS stdout and stderr are only available to commands explicitly.
+
+## Serpent vs. Cobra and Viper
+
+Serpent is intended to be a complete replacement for both Cobra and Viper. While Viper is often used with Cobra to provide environment and config file support, Serpent has this functionality built-in. This results in a more integrated and streamlined experience.
+
+## Examples
+
+For a more comprehensive example of a large-scale CLI built with Serpent, please see the [coder/coder](https://github.com/coder/coder) repository.
