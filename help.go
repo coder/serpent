@@ -15,7 +15,7 @@ import (
 
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/muesli/termenv"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 	"golang.org/x/xerrors"
 
 	"github.com/coder/pretty"
@@ -31,7 +31,7 @@ type optionGroup struct {
 }
 
 func ttyWidth() int {
-	width, _, err := terminal.GetSize(0)
+	width, _, err := term.GetSize(0)
 	if err != nil {
 		return 80
 	}
@@ -73,10 +73,8 @@ func prettyHeader(s string) string {
 }
 
 var defaultHelpTemplate = func() *template.Template {
-	var (
-		optionFg = pretty.FgColor(
-			helpColor("#04A777"),
-		)
+	optionFg := pretty.FgColor(
+		helpColor("#04A777"),
 	)
 	return template.Must(
 		template.New("usage").Funcs(
