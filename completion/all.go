@@ -59,7 +59,7 @@ func ShellOptions(choice *string) *serpent.Enum {
 func DetectUserShell(programName string) (Shell, error) {
 	// Attempt to get the SHELL environment variable first
 	if shell := os.Getenv("SHELL"); shell != "" {
-		return ShellByName(filepath.Base(shell), "")
+		return ShellByName(filepath.Base(shell), programName)
 	}
 
 	// Fallback: Look up the current user and parse /etc/passwd
