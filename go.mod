@@ -13,6 +13,7 @@ require (
 	github.com/pion/udp v0.1.4
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
+	github.com/xhit/go-str2duration/v2 v2.1.0
 	golang.org/x/crypto v0.19.0
 	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028

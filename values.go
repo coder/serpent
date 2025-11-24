@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
+	str2duration "github.com/xhit/go-str2duration/v2"
 	"golang.org/x/xerrors"
 	"gopkg.in/yaml.v3"
 )
@@ -262,7 +263,16 @@ func DurationOf(d *time.Duration) *Duration {
 }
 
 func (d *Duration) Set(v string) error {
-	dd, err := time.ParseDuration(v)
+	// Try [str2duration.ParseDuration] first, which supports days and weeks.
+	// If it fails, fall back to [time.ParseDuration] for backward compatibility.
+	dd, err := str2duration.ParseDuration(v)
+	if err == nil {
+		*d = Duration(dd)
+		return nil
+	}
+
+	// Fallback to standard [time.ParseDuration].
+	dd, err = time.ParseDuration(v)
 	*d = Duration(dd)
 	return err
 }
