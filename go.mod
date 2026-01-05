@@ -3,7 +3,7 @@ module github.com/coder/serpent
 go 1.21.4
 
 require (
-	cdr.dev/slog v1.6.2-0.20240126064726-20367d4aede6
+	cdr.dev/slog/v3 v3.0.0-rc1
 	github.com/coder/pretty v0.0.0-20230908205945-e89ba86370e0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/mitchellh/go-homedir v1.1.0
