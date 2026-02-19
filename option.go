@@ -351,6 +351,7 @@ func (optSet *OptionSet) SetDefaults() error {
 						opt.Name,
 					),
 				)
+				continue
 			}
 			opt.Default = opt.DefaultFn()
 		}
