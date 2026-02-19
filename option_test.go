@@ -285,6 +285,98 @@ func TestOptionSet_JsonMarshal(t *testing.T) {
 	})
 }
 
+func TestOptionSet_DefaultFn(t *testing.T) {
+	t.Parallel()
+	var verbose serpent.Bool
+	var logLevel serpent.String
+	var setByEnv serpent.String
+	os := serpent.OptionSet{
+		{
+			Name:    "verbose",
+			Env:     "VERBOSE",
+			Value:   &verbose,
+			Default: "false",
+		},
+		{
+			Name:  "log-level",
+			Value: &logLevel,
+			DefaultFn: func() string {
+				if verbose.Value() {
+					return "debug"
+				}
+				return "info"
+			},
+		},
+		{
+			Name:  "set-overridden",
+			Value: &setByEnv,
+			Env:   "SET_OVERRIDDEN",
+			DefaultFn: func() string {
+				return "set-by-default-fn"
+			},
+		},
+	}
+	// Simulate VERBOSE=true from env
+	err := os.ParseEnv([]serpent.EnvVar{{Name: "VERBOSE", Value: "true"}, {Name: "SET_OVERRIDDEN", Value: "set-by-env"}})
+	require.NoError(t, err)
+	err = os.SetDefaults()
+	require.NoError(t, err)
+	require.Equal(t, "debug", logLevel.String())
+	require.Equal(t, "set-by-env", setByEnv.String())
+	require.Equal(t, os.ByName("log-level").Default, "debug")
+	require.Equal(t, os.ByName("set-overridden").Value.String(), "set-by-env")
+	require.Equal(t, os.ByName("set-overridden").Default, "set-by-default-fn")
+}
+
+// TestOptionSet_DefaultFnRace tests the racing behavior of DefaultFns when
+// they reference each other
+//
+// In this test if the DefaultFns are not properly isolated, then defaults for
+// the earlier values affect the later ones.
+// The DefaultFn does not support referencing other option defaults.
+func TestOptionSet_DefaultFnRace(t *testing.T) {
+	t.Parallel()
+	var (
+		def serpent.String
+		a   serpent.String
+		b   serpent.String
+		c   serpent.String
+	)
+	os := serpent.OptionSet{
+		{
+			Name:    "default",
+			Default: "default", // Even this you cannot use
+			Value:   &def,
+		},
+		{
+			Name:      "a",
+			Value:     &a,
+			DefaultFn: func() string { return def.String() + "a" },
+		},
+		{
+			Name:      "b",
+			Value:     &b,
+			DefaultFn: func() string { return a.String() + "b" },
+		},
+		{
+			Name:      "c",
+			Value:     &c,
+			DefaultFn: func() string { return b.String() + "c" },
+		},
+	}
+	err := os.SetDefaults()
+	require.NoError(t, err)
+
+	require.Equal(t, a.String(), "a")
+	require.Equal(t, os.ByName("a").Default, "a")
+
+	require.Equal(t, b.String(), "b")
+	require.Equal(t, os.ByName("b").Default, "b")
+
+	require.Equal(t, c.String(), "c")
+	require.Equal(t, os.ByName("c").Default, "c")
+}
+
 func compareOptionsExceptValues(t *testing.T, exp, found serpent.Option) {
 	t.Helper()
 

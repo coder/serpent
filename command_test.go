@@ -924,3 +924,144 @@ func TestCommand_OptionsWithSharedValue(t *testing.T) {
 	err = makeCmd("def.com", "alt-def.com").Invoke().Run()
 	require.Error(t, err, "default values are different")
 }
+
+func TestOptionSet_DefaultAndDefaultFn(t *testing.T) {
+	t.Parallel()
+	var val serpent.String
+	os := serpent.OptionSet{
+		{
+			Name:    "test",
+			Value:   &val,
+			Default: "static",
+			DefaultFn: func() string {
+				return "dynamic"
+			},
+		},
+	}
+	err := os.SetDefaults()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "cannot set both Default and DefaultFn")
+}
+
+func TestCommand_DefaultFn(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name        string
+		args        []string
+		env         map[string]string
+		wantVerbose bool
+		wantLevel   string
+		wantDefault string // DefaultFn always populates Default field
+		wantSource  serpent.ValueSource
+	}
+
+	cases := []testCase{
+		{
+			name:        "no flags, DefaultFn uses dependency default",
+			args:        []string{},
+			env:         nil,
+			wantVerbose: false,
+			wantLevel:   "info",
+			wantDefault: "info",
+			wantSource:  serpent.ValueSourceDefault,
+		},
+		{
+			name:        "verbose flag set, DefaultFn sees it",
+			args:        []string{"--verbose"},
+			env:         nil,
+			wantVerbose: true,
+			wantLevel:   "debug",
+			wantDefault: "debug",
+			wantSource:  serpent.ValueSourceDefault,
+		},
+		{
+			name:        "verbose from env, DefaultFn sees it",
+			args:        []string{},
+			env:         map[string]string{"VERBOSE": "true"},
+			wantVerbose: true,
+			wantLevel:   "debug",
+			wantDefault: "debug",
+			wantSource:  serpent.ValueSourceDefault,
+		},
+		{
+			name:        "explicit log-level overrides DefaultFn",
+			args:        []string{"--verbose", "--log-level", "warn"},
+			env:         nil,
+			wantVerbose: true,
+			wantLevel:   "warn",
+			wantDefault: "debug", // DefaultFn still runs, populates Default
+			wantSource:  serpent.ValueSourceFlag,
+		},
+		{
+			name:        "log-level from env overrides DefaultFn",
+			args:        []string{"--verbose"},
+			env:         map[string]string{"LOG_LEVEL": "error"},
+			wantVerbose: true,
+			wantLevel:   "error",
+			wantDefault: "debug", // DefaultFn still runs, populates Default
+			wantSource:  serpent.ValueSourceEnv,
+		},
+		{
+			name:        "flag beats env for log-level",
+			args:        []string{"--log-level", "trace"},
+			env:         map[string]string{"LOG_LEVEL": "error", "VERBOSE": "true"},
+			wantVerbose: true,
+			wantLevel:   "trace",
+			wantDefault: "debug", // DefaultFn still runs, populates Default
+			wantSource:  serpent.ValueSourceFlag,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var verbose serpent.Bool
+			var logLevel serpent.String
+
+			cmd := &serpent.Command{
+				Options: serpent.OptionSet{
+					{
+						Name:    "verbose",
+						Flag:    "verbose",
+						Env:     "VERBOSE",
+						Value:   &verbose,
+						Default: "false",
+					},
+					{
+						Name:  "log-level",
+						Flag:  "log-level",
+						Env:   "LOG_LEVEL",
+						Value: &logLevel,
+						DefaultFn: func() string {
+							if verbose.Value() {
+								return "debug"
+							}
+							return "info"
+						},
+					},
+				},
+				Handler: func(i *serpent.Invocation) error {
+					return nil
+				},
+			}
+
+			inv := cmd.Invoke(tc.args...)
+			for k, v := range tc.env {
+				inv.Environ.Set(k, v)
+			}
+
+			err := inv.Run()
+			require.NoError(t, err)
+			require.Equal(t, tc.wantVerbose, verbose.Value(), "verbose mismatch")
+			require.Equal(t, tc.wantLevel, logLevel.String(), "log-level mismatch")
+
+			// DefaultFn always populates the Default field (for JSON marshalling)
+			opt := cmd.Options.ByName("log-level")
+			require.Equal(t, tc.wantDefault, opt.Default, "Default field mismatch")
+			require.Equal(t, tc.wantSource, opt.ValueSource, "ValueSource mismatch")
+		})
+	}
+}
