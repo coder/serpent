@@ -57,9 +57,14 @@ type Option struct {
 	// Default is parsed into Value if set.
 	// Must be `""` if `DefaultFn` != nil
 	Default string `json:"default,omitempty"`
-	// DefaultFn is called to compute the default.
-	// It's evaluated during SetDefaults(), after env/flag/yaml parsing.
-	// It will populate the Default field for json marshalling.
+	// DefaultFn is called to compute the default value dynamically.
+	// It is evaluated during SetDefaults(), after env/flag/yaml parsing,
+	// but BEFORE static Default values are applied. This means if your
+	// DefaultFn depends on another option, that option must get its value
+	// from env, flag, or yaml - not from a static Default.
+	//
+	// The result populates the Default field (for JSON marshalling) and
+	// is applied to Value if no higher-priority source set it.
 	DefaultFn func() string `json:"-"`
 	// Value includes the types listed in values.go.
 	Value pflag.Value `json:"value,omitempty"`
@@ -336,8 +341,7 @@ func (optSet *OptionSet) SetDefaults() error {
 			continue
 		}
 
-		// If DefaultFn is set, it takes precedence over Default.
-		// Update the "Default" and use that going forward.
+		// Use DefaultFn to set the 'Default' field.
 		if opt.DefaultFn != nil {
 			if opt.Default != "" {
 				merr = multierror.Append(
