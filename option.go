@@ -55,7 +55,12 @@ type Option struct {
 	YAML string `json:"yaml,omitempty"`
 
 	// Default is parsed into Value if set.
+	// Must be `""` if `DefaultFn` != nil
 	Default string `json:"default,omitempty"`
+	// DefaultFn is called to compute the default.
+	// It's evaluated during SetDefaults(), after env/flag/yaml parsing.
+	// It will populate the Default field for json marshalling.
+	DefaultFn func() string `json:"-"`
 	// Value includes the types listed in values.go.
 	Value pflag.Value `json:"value,omitempty"`
 
@@ -330,6 +335,22 @@ func (optSet *OptionSet) SetDefaults() error {
 			)
 			continue
 		}
+
+		// If DefaultFn is set, it takes precedence over Default.
+		// Update the "Default" and use that going forward.
+		if opt.DefaultFn != nil {
+			if opt.Default != "" {
+				merr = multierror.Append(
+					merr,
+					xerrors.Errorf(
+						"option %q: cannot set both Default and DefaultFn",
+						opt.Name,
+					),
+				)
+			}
+			opt.Default = opt.DefaultFn()
+		}
+
 		groupByValue[opt.Value] = append(groupByValue[opt.Value], opt)
 	}
 

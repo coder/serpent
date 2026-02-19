@@ -285,6 +285,49 @@ func TestOptionSet_JsonMarshal(t *testing.T) {
 	})
 }
 
+func TestOptionSet_DefaultFn(t *testing.T) {
+	t.Parallel()
+	var verbose serpent.Bool
+	var logLevel serpent.String
+	var setByEnv serpent.String
+	os := serpent.OptionSet{
+		{
+			Name:    "verbose",
+			Env:     "VERBOSE",
+			Value:   &verbose,
+			Default: "false",
+		},
+		{
+			Name:  "log-level",
+			Value: &logLevel,
+			DefaultFn: func() string {
+				if verbose.Value() {
+					return "debug"
+				}
+				return "info"
+			},
+		},
+		{
+			Name:  "set-overridden",
+			Value: &setByEnv,
+			Env:   "SET_OVERRIDDEN",
+			DefaultFn: func() string {
+				return "set-by-default-fn"
+			},
+		},
+	}
+	// Simulate VERBOSE=true from env
+	err := os.ParseEnv([]serpent.EnvVar{{Name: "VERBOSE", Value: "true"}, {Name: "SET_OVERRIDDEN", Value: "set-by-env"}})
+	require.NoError(t, err)
+	err = os.SetDefaults()
+	require.NoError(t, err)
+	require.Equal(t, "debug", logLevel.String())
+	require.Equal(t, "set-by-env", setByEnv.String())
+	require.Equal(t, os.ByName("log-level").Default, "debug")
+	require.Equal(t, os.ByName("set-overridden").Value.String(), "set-by-env")
+	require.Equal(t, os.ByName("set-overridden").Default, "set-by-default-fn")
+}
+
 func compareOptionsExceptValues(t *testing.T, exp, found serpent.Option) {
 	t.Helper()
 
