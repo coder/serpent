@@ -61,7 +61,7 @@ type Option struct {
 	// It is evaluated during SetDefaults(), after env/flag/yaml parsing,
 	// but BEFORE static Default values are applied. This means if your
 	// DefaultFn depends on another option, that option must get its value
-	// from env, flag, or yaml - not from a static Default.
+	// from env, flag, or yaml - not from a static Default or DefaultFn.
 	//
 	// The result populates the Default field (for JSON marshalling) and
 	// is applied to Value if no higher-priority source set it.
