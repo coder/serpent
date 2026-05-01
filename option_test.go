@@ -155,6 +155,32 @@ func TestOptionSet_ParseEnv(t *testing.T) {
 		// An explicitly empty environment variable should override the
 		// default value, allowing users to clear a default.
 		require.EqualValues(t, "", workspaceName)
+		require.Equal(t, serpent.ValueSourceEnv, os[0].ValueSource)
+	})
+
+	t.Run("EmptyValueUnset", func(t *testing.T) {
+		t.Parallel()
+
+		var workspaceName serpent.String
+
+		os := serpent.OptionSet{
+			serpent.Option{
+				Name:    "Workspace Name",
+				Value:   &workspaceName,
+				Default: "defname",
+				Env:     "WORKSPACE_NAME",
+			},
+		}
+
+		err := os.SetDefaults()
+		require.NoError(t, err)
+
+		// An env var that is not present at all should preserve the
+		// default value.
+		err = os.ParseEnv(serpent.ParseEnviron([]string{}, "CODER_"))
+		require.NoError(t, err)
+		require.EqualValues(t, "defname", workspaceName)
+		require.Equal(t, serpent.ValueSourceDefault, os[0].ValueSource)
 	})
 
 	t.Run("StringSlice", func(t *testing.T) {
