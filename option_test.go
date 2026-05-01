@@ -152,7 +152,9 @@ func TestOptionSet_ParseEnv(t *testing.T) {
 
 		err = os.ParseEnv(serpent.ParseEnviron([]string{"CODER_WORKSPACE_NAME="}, "CODER_"))
 		require.NoError(t, err)
-		require.EqualValues(t, "defname", workspaceName)
+		// An explicitly empty environment variable should override the
+		// default value, allowing users to clear a default.
+		require.EqualValues(t, "", workspaceName)
 	})
 
 	t.Run("StringSlice", func(t *testing.T) {
