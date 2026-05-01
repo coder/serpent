@@ -292,15 +292,7 @@ func (optSet *OptionSet) ParseEnv(vs []EnvVar) error {
 			// because the agent lacked the environment variables to authenticate with Git.
 			envVal, ok = envs[`HOMEBREW_`+opt.Env]
 		}
-		// Currently, empty values are treated as if the environment variable is
-		// unset. This behavior is technically not correct as there is now no
-		// way for a user to change a Default value to an empty string from
-		// the environment. Unfortunately, we have old configuration files
-		// that rely on the faulty behavior.
-		//
-		// TODO: We should remove this hack in May 2023, when deployments
-		// have had months to migrate to the new behavior.
-		if !ok || envVal == "" {
+		if !ok {
 			continue
 		}
 
