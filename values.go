@@ -307,12 +307,73 @@ func URLOf(u *url.URL) *URL {
 }
 
 func (u *URL) Set(v string) error {
-	uu, err := url.Parse(v)
+	uu, err := url.Parse(bracketBareIPv6(v))
 	if err != nil {
 		return err
 	}
 	*u = URL(*uu)
 	return nil
+}
+
+// bracketBareIPv6 wraps an unbracketed IPv6 literal in the URL's
+// authority (host:port) component in square brackets, e.g.
+// "http://2600:2222::22:8080" becomes "http://[2600:2222::22]:8080".
+// net/url.Parse cannot otherwise distinguish an IPv6 host from its
+// trailing port. IPv4 hosts, hostnames, and already-bracketed IPv6
+// hosts are left untouched.
+func bracketBareIPv6(raw string) string {
+	schemeEnd := 0
+	if idx := strings.Index(raw, "://"); idx >= 0 {
+		schemeEnd = idx + len("://")
+	}
+	rest := raw[schemeEnd:]
+	authority, remainder := rest, ""
+	if idx := strings.IndexByte(rest, '/'); idx >= 0 {
+		authority, remainder = rest[:idx], rest[idx:]
+	}
+	if host, port, ok := bareIPv6HostPort(authority); ok {
+		authority = net.JoinHostPort(host, port) // adds brackets
+	}
+	return raw[:schemeEnd] + authority + remainder
+}
+
+// bareIPv6HostPort reports whether authority is an unbracketed
+// "ipv6literal:port" pair (e.g. "2600:2222::22:8080"), and if so
+// splits it into host and port. IPv4 (single colon) and hostnames
+// (zero colons before the port) are left untouched, since url.Parse
+// already handles those correctly.
+func bareIPv6HostPort(authority string) (host, port string, ok bool) {
+	if strings.HasPrefix(authority, "[") {
+		return "", "", false // already bracketed
+	}
+	idx := strings.LastIndex(authority, ":")
+	if idx < 0 {
+		return "", "", false // no port separator at all
+	}
+	host, port = authority[:idx], authority[idx+1:]
+	if port == "" || !isAllDigits(port) {
+		return "", "", false
+	}
+	if strings.Count(host, ":") == 0 {
+		return "", "", false // IPv4 or hostname; single colon is the port separator
+	}
+	if net.ParseIP(host) == nil {
+		return "", "", false // not a valid IPv6 literal; leave for url.Parse to error naturally
+	}
+	return host, port, true
+}
+
+// isAllDigits reports whether s is non-empty and consists only of ASCII digits.
+func isAllDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func (u *URL) String() string {

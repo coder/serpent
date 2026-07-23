@@ -1,6 +1,7 @@
 package serpent_test
 
 import (
+	"net/url"
 	"testing"
 	"time"
 
@@ -140,4 +141,108 @@ func TestDurationOf(t *testing.T) {
 	newVal := 10 * time.Minute
 	*d = serpent.Duration(newVal)
 	require.Equal(t, newVal, time.Duration(td))
+}
+
+func TestURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		input        string
+		expectedHost string
+		expectedStr  string
+		wantErr      bool
+	}{
+		{
+			name:         "BareIPv6WithPort",
+			input:        "http://2600:2222::22:8080",
+			expectedHost: "[2600:2222::22]:8080",
+			expectedStr:  "http://[2600:2222::22]:8080",
+		},
+		{
+			name:         "BareIPv6WithPortFromIssue",
+			input:        "http://2600:2222:2222:2222:22::22:8080",
+			expectedHost: "[2600:2222:2222:2222:22::22]:8080",
+			expectedStr:  "http://[2600:2222:2222:2222:22::22]:8080",
+		},
+		{
+			name:         "AlreadyBracketedIPv6",
+			input:        "http://[::1]:8080",
+			expectedHost: "[::1]:8080",
+			expectedStr:  "http://[::1]:8080",
+		},
+		{
+			name:         "IPv4WithPort",
+			input:        "http://127.0.0.1:8080",
+			expectedHost: "127.0.0.1:8080",
+			expectedStr:  "http://127.0.0.1:8080",
+		},
+		{
+			name:         "HostnameWithPort",
+			input:        "http://example.com:8080",
+			expectedHost: "example.com:8080",
+			expectedStr:  "http://example.com:8080",
+		},
+		{
+			name:         "HostnameWithPath",
+			input:        "http://example.com/path",
+			expectedHost: "example.com",
+			expectedStr:  "http://example.com/path",
+		},
+		{
+			name:         "BareIPv6WithPath",
+			input:        "http://2600:2222::22:8080/path",
+			expectedHost: "[2600:2222::22]:8080",
+			expectedStr:  "http://[2600:2222::22]:8080/path",
+		},
+		{
+			name:    "Empty",
+			input:   "",
+			wantErr: false, // url.Parse("") succeeds and yields an empty URL
+		},
+		{
+			name:    "Malformed",
+			input:   "http://[::1:8080", // unterminated bracket
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var u serpent.URL
+			err := u.Set(tt.input)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			if tt.expectedHost != "" {
+				require.Equal(t, tt.expectedHost, u.Value().Host)
+			}
+			if tt.expectedStr != "" {
+				require.Equal(t, tt.expectedStr, u.String())
+			}
+
+			// Verify String() returns a value that is still parseable and
+			// round-trips to the same result.
+			str := u.String()
+			var u2 serpent.URL
+			err = u2.Set(str)
+			require.NoError(t, err)
+			require.Equal(t, u.Value().String(), u2.Value().String(), "String() should return a parseable value")
+		})
+	}
+}
+
+func TestURLOf(t *testing.T) {
+	t.Parallel()
+
+	base := &url.URL{Scheme: "http", Host: "example.com:8080"}
+	u := serpent.URLOf(base)
+	require.NotNil(t, u)
+	require.Equal(t, base, u.Value())
 }
