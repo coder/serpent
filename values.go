@@ -356,7 +356,10 @@ func bareIPv6HostPort(authority string) (host, port string, ok bool) {
 		return "", "", false // no port separator at all
 	}
 	host, port = authority[:idx], authority[idx+1:]
-	if port == "" || !isAllDigits(port) {
+	// A valid port is a non-empty decimal number. strconv.Atoi rejects
+	// empty strings, signs, and non-digits, matching net/url's own
+	// port validation.
+	if _, err := strconv.Atoi(port); err != nil {
 		return "", "", false
 	}
 	if strings.Count(host, ":") == 0 {
@@ -376,19 +379,6 @@ func bareIPv6HostPort(authority string) (host, port string, ok bool) {
 		return "", "", false // not a valid IPv6 literal; leave for url.Parse to error naturally
 	}
 	return host, port, true
-}
-
-// isAllDigits reports whether s is non-empty and consists only of ASCII digits.
-func isAllDigits(s string) bool {
-	if s == "" {
-		return false
-	}
-	for _, r := range s {
-		if r < '0' || r > '9' {
-			return false
-		}
-	}
-	return true
 }
 
 func (u *URL) String() string {
