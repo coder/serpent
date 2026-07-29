@@ -196,6 +196,44 @@ func TestURL(t *testing.T) {
 			expectedStr:  "http://[2600:2222::22]:8080/path",
 		},
 		{
+			// Authority is terminated by '?' with no leading '/'.
+			name:         "BareIPv6WithQuery",
+			input:        "http://2600:2222::22:8080?foo=bar",
+			expectedHost: "[2600:2222::22]:8080",
+			expectedStr:  "http://[2600:2222::22]:8080?foo=bar",
+		},
+		{
+			// Authority is terminated by '#' with no leading '/'.
+			name:         "BareIPv6WithFragment",
+			input:        "http://2600:2222::22:8080#frag",
+			expectedHost: "[2600:2222::22]:8080",
+			expectedStr:  "http://[2600:2222::22]:8080#frag",
+		},
+		{
+			// userinfo must not be mistaken for part of the host.
+			name:         "BareIPv6WithUserinfo",
+			input:        "http://user:pass@2600:2222::22:8080/path",
+			expectedHost: "[2600:2222::22]:8080",
+			expectedStr:  "http://user:pass@[2600:2222::22]:8080/path",
+		},
+		{
+			// IPv6 without a port must be left alone; url.Parse handles
+			// bracketed literals, and bare literals without ports are
+			// ambiguous and should error naturally.
+			name:         "AlreadyBracketedIPv6NoPort",
+			input:        "http://[::1]",
+			expectedHost: "[::1]",
+			expectedStr:  "http://[::1]",
+		},
+		{
+			// A hostname containing colons that isn't a valid IPv6
+			// literal should not be auto-bracketed; url.Parse will
+			// return its own error.
+			name:    "InvalidIPv6ShapedHost",
+			input:   "http://not:an:ipv6:literal:8080",
+			wantErr: true,
+		},
+		{
 			name:    "Empty",
 			input:   "",
 			wantErr: false, // url.Parse("") succeeds and yields an empty URL

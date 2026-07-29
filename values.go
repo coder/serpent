@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/netip"
 	"net/url"
 	"reflect"
 	"regexp"
@@ -322,19 +323,31 @@ func (u *URL) Set(v string) error {
 // trailing port. IPv4 hosts, hostnames, and already-bracketed IPv6
 // hosts are left untouched.
 func bracketBareIPv6(raw string) string {
+	// Isolate the authority component. Per RFC 3986, the authority
+	// starts after "scheme://" (if present) and ends at the first
+	// "/", "?", or "#".
 	schemeEnd := 0
 	if idx := strings.Index(raw, "://"); idx >= 0 {
 		schemeEnd = idx + len("://")
 	}
 	rest := raw[schemeEnd:]
-	authority, remainder := rest, ""
-	if idx := strings.IndexByte(rest, '/'); idx >= 0 {
-		authority, remainder = rest[:idx], rest[idx:]
+	authorityEnd := strings.IndexAny(rest, "/?#")
+	if authorityEnd < 0 {
+		authorityEnd = len(rest)
 	}
+	authority, remainder := rest[:authorityEnd], rest[authorityEnd:]
+
+	// Split off any userinfo ("user[:pass]@") before the host so it is
+	// not mistaken for part of an IPv6 literal.
+	userinfo := ""
+	if idx := strings.LastIndex(authority, "@"); idx >= 0 {
+		userinfo, authority = authority[:idx+1], authority[idx+1:]
+	}
+
 	if host, port, ok := bareIPv6HostPort(authority); ok {
 		authority = net.JoinHostPort(host, port) // adds brackets
 	}
-	return raw[:schemeEnd] + authority + remainder
+	return raw[:schemeEnd] + userinfo + authority + remainder
 }
 
 // bareIPv6HostPort reports whether authority is an unbracketed
@@ -357,7 +370,17 @@ func bareIPv6HostPort(authority string) (host, port string, ok bool) {
 	if strings.Count(host, ":") == 0 {
 		return "", "", false // IPv4 or hostname; single colon is the port separator
 	}
-	if net.ParseIP(host) == nil {
+	// netip.ParseAddr is stricter than net.ParseIP: it rejects trailing
+	// junk and distinguishes v4 from v6 without allocating. Strip an
+	// optional zone identifier ("fe80::1%eth0") before parsing since
+	// zones are legal in an IPv6 literal but not accepted by ParseAddr
+	// when combined with certain forms.
+	bare := host
+	if z := strings.IndexByte(bare, '%'); z >= 0 {
+		bare = bare[:z]
+	}
+	addr, err := netip.ParseAddr(bare)
+	if err != nil || !addr.Is6() {
 		return "", "", false // not a valid IPv6 literal; leave for url.Parse to error naturally
 	}
 	return host, port, true
