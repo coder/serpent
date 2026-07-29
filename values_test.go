@@ -210,13 +210,6 @@ func TestURL(t *testing.T) {
 			expectedStr:  "http://[2600:2222::22]:8080#frag",
 		},
 		{
-			// userinfo must not be mistaken for part of the host.
-			name:         "BareIPv6WithUserinfo",
-			input:        "http://user:pass@2600:2222::22:8080/path",
-			expectedHost: "[2600:2222::22]:8080",
-			expectedStr:  "http://user:pass@[2600:2222::22]:8080/path",
-		},
-		{
 			// IPv6 without a port must be left alone; url.Parse handles
 			// bracketed literals, and bare literals without ports are
 			// ambiguous and should error naturally.

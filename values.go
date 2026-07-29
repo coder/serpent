@@ -336,18 +336,10 @@ func bracketBareIPv6(raw string) string {
 		authorityEnd = len(rest)
 	}
 	authority, remainder := rest[:authorityEnd], rest[authorityEnd:]
-
-	// Split off any userinfo ("user[:pass]@") before the host so it is
-	// not mistaken for part of an IPv6 literal.
-	userinfo := ""
-	if idx := strings.LastIndex(authority, "@"); idx >= 0 {
-		userinfo, authority = authority[:idx+1], authority[idx+1:]
-	}
-
 	if host, port, ok := bareIPv6HostPort(authority); ok {
 		authority = net.JoinHostPort(host, port) // adds brackets
 	}
-	return raw[:schemeEnd] + userinfo + authority + remainder
+	return raw[:schemeEnd] + authority + remainder
 }
 
 // bareIPv6HostPort reports whether authority is an unbracketed
