@@ -452,7 +452,7 @@ func (s *Struct[T]) UnmarshalYAML(n *yaml.Node) error {
 	// HACK: for compatibility with flags, we use nil slices instead of empty
 	// slices. In most cases, nil slices and empty slices are treated
 	// the same, so this behavior may be removed at some point.
-	if typ := reflect.TypeOf(s.Value); typ.Kind() == reflect.Slice && len(n.Content) == 0 {
+	if typ := reflect.TypeOf(s.Value); typ != nil && typ.Kind() == reflect.Slice && len(n.Content) == 0 {
 		reflect.ValueOf(&s.Value).Elem().Set(reflect.Zero(typ))
 		return nil
 	}
