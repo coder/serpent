@@ -168,20 +168,20 @@ func templateConfigSplit(header, footer, data []byte) (before, after []byte, err
 	startCount := bytes.Count(data, header)
 	endCount := bytes.Count(data, footer)
 	if startCount > 1 || endCount > 1 {
-		return nil, nil, fmt.Errorf("Malformed config file: multiple config sections")
+		return nil, nil, fmt.Errorf("malformed config file: multiple config sections")
 	}
 
 	startIndex := bytes.Index(data, header)
 	endIndex := bytes.Index(data, footer)
 	if startIndex == -1 && endIndex != -1 {
-		return data, nil, fmt.Errorf("Malformed config file: missing completion header")
+		return data, nil, fmt.Errorf("malformed config file: missing completion header")
 	}
 	if startIndex != -1 && endIndex == -1 {
-		return data, nil, fmt.Errorf("Malformed config file: missing completion footer")
+		return data, nil, fmt.Errorf("malformed config file: missing completion footer")
 	}
 	if startIndex != -1 && endIndex != -1 {
 		if startIndex > endIndex {
-			return data, nil, fmt.Errorf("Malformed config file: completion header after footer")
+			return data, nil, fmt.Errorf("malformed config file: completion header after footer")
 		}
 		// Include leading and trailing newline, if present
 		start := startIndex

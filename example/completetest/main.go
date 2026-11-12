@@ -19,7 +19,7 @@ func installCommand() *serpent.Command {
 		Handler: func(inv *serpent.Invocation) error {
 			defaultShell, err := completion.DetectUserShell(inv.Command.Parent.Name())
 			if err != nil {
-				return fmt.Errorf("Could not detect user shell, please specify a shell using `--shell`")
+				return fmt.Errorf("could not detect user shell, please specify a shell using `--shell`")
 			}
 			return defaultShell.WriteCompletion(inv.Stdout)
 		},
