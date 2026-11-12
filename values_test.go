@@ -88,7 +88,7 @@ func TestDuration(t *testing.T) {
 		{
 			name:     "ComplexCombination",
 			input:    "2w3d4h5m6s",
-			expected: (14 + 3) * 24 * time.Hour + 4*time.Hour + 5*time.Minute + 6*time.Second,
+			expected: (14+3)*24*time.Hour + 4*time.Hour + 5*time.Minute + 6*time.Second,
 		},
 		// Error cases
 		{

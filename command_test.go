@@ -112,7 +112,7 @@ func sampleCommand(t *testing.T) *serpent.Command {
 					return nil
 				},
 				Handler: func(i *serpent.Invocation) error {
-					_, _ = i.Stdout.Write([]byte(fmt.Sprintf("%s-%t", reqStr, reqBool)))
+					_, _ = fmt.Fprintf(i.Stdout, "%s-%t", reqStr, reqBool)
 					return nil
 				},
 			},
@@ -1014,7 +1014,6 @@ func TestCommand_DefaultFn(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

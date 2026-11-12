@@ -1,6 +1,7 @@
 package serpent
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"flag"
@@ -8,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"testing"
 	"unicode"
@@ -15,8 +17,6 @@ import (
 	"cdr.dev/slog/v3"
 
 	"github.com/spf13/pflag"
-	"golang.org/x/exp/constraints"
-	"golang.org/x/exp/slices"
 	"golang.org/x/xerrors"
 	"gopkg.in/yaml.v3"
 )
@@ -90,7 +90,7 @@ func (c *Command) Walk(fn func(*Command)) {
 	}
 }
 
-func ascendingSortFn[T constraints.Ordered](a, b T) int {
+func ascendingSortFn[T cmp.Ordered](a, b T) int {
 	if a < b {
 		return -1
 	} else if a == b {

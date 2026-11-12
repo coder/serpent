@@ -9,7 +9,7 @@ package serpent
 import (
 	"strings"
 
-	"golang.org/x/exp/maps"
+	"maps"
 )
 
 // Group describes a hierarchy of groups that an option or command belongs to.

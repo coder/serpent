@@ -209,7 +209,6 @@ func TestFileCompletion(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			for _, path := range tc.paths {
@@ -294,7 +293,6 @@ func TestCompletionInstall(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
 			path := filepath.Join(dir, "fake.sh")

@@ -16,6 +16,10 @@ When compared to cobra, serpent strives for:
 * Composition via middleware
 * Testability (e.g. OS Stdout and Stderr is only available to commands explicitly)
 
+## Requirements
+
+serpent requires Go 1.26 or newer.
+
 ## Basic Usage
 
 See `example/echo`:
@@ -90,6 +94,36 @@ type Option struct {
 
 And is used by each [Command](https://pkg.go.dev/github.com/coder/serpent#Command) when
 passed as an array to the `Options` field.
+
+Values are resolved in priority order: flag, environment variable, YAML config, then `Default`.
+
+### Config files (YAML)
+
+Options with a `YAML` key can be set from a config file. Add an option whose `Value` is a `*serpent.YAMLConfigPath`, and serpent will load that file before applying defaults:
+
+```go
+var configPath serpent.YAMLConfigPath
+opts := serpent.OptionSet{
+	{Name: "Config", Flag: "config", Env: "APP_CONFIG", Value: &configPath},
+	{Name: "Port", Flag: "port", YAML: "port", Default: "8080", Value: serpent.Int64Of(&port)},
+	{
+		Name:  "Log Level",
+		YAML:  "level",
+		Group: &serpent.Group{Name: "Logging", YAML: "logging"},
+		Value: serpent.EnumOf(&level, "debug", "info", "warn"),
+	},
+}
+```
+
+```yaml
+port: 9090
+logging:
+  level: debug
+```
+
+`Group.YAML` keys nest options under mappings. Unknown keys are rejected.
+JSON is valid YAML, so a `.json` config file works as well.
+`OptionSet.MarshalYAML` produces a commented config populated with current values.
 
 ## Comparison with Cobra
 

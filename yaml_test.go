@@ -1,11 +1,11 @@
 package serpent_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 
 	"github.com/coder/serpent"
@@ -155,7 +155,6 @@ func TestOptionSet_YAMLIsomorphism(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

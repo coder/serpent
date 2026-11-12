@@ -4,7 +4,7 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/pion/udp"
+	"github.com/pion/transport/v3/udp"
 	"golang.org/x/xerrors"
 )
 

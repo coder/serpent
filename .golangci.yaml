@@ -1,4 +1,5 @@
-linter-settings:
-  linters:
-    disable:
-      - errcheck
+version: "2"
+
+linters:
+  disable:
+    - errcheck
